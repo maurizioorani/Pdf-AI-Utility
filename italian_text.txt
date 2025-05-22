@@ -1,0 +1,4 @@
+Questo è un documento di prova per l'elaborazione OCR.
+Contiene testo italiano che dovrebbe essere riconosciuto dal motore OCR Tesseract.
+Stiamo testando la funzionalità del nostro strumento OCR PDF con diverse lingue.
+Il sistema dovrebbe identificare ed estrarre correttamente questo testo da un documento PDF scansionato.

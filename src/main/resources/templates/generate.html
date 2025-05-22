@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generate PDF from HTML</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- CKEditor 5 for HTML editing -->
+    <script src="https://cdn.ckeditor.com/ckeditor5/41.4.2/classic/ckeditor.js"></script>
+    <link rel="stylesheet" th:href="@{/css/style.css}" />
+</head>
+<body>
+    <!-- Navigation -->
+    <div th:replace="~{fragments/navbar :: page-navbar (activePage='templates')}"></div>
+
+    <!-- Hero Section -->
+    <section class="hero-section text-center">
+        <div class="container">
+            <h1 class="display-3 fw-bold mb-4">Generate PDF from HTML</h1>
+            <p class="lead mb-4">Use the editor below to create or modify HTML content and then generate a PDF.</p>
+        </div>
+    </section>
+
+    <div class="container my-5">
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <ul class="nav nav-tabs card-header-tabs" id="editorTabs" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active" id="editor-tab" data-bs-toggle="tab" data-bs-target="#editor" type="button" role="tab" aria-controls="editor" aria-selected="true">HTML Editor</button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="live-preview-tab" data-bs-toggle="tab" data-bs-target="#live-preview" type="button" role="tab" aria-controls="live-preview" aria-selected="false">Live Preview</button>
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="card-body">
+                        <div class="tab-content" id="editorTabsContent">
+                            <div class="tab-pane fade show active" id="editor" role="tabpanel" aria-labelledby="editor-tab">
+                                <form id="htmlForm" method="post">
+                                    <div class="mb-3">
+                                        <label for="templateName" class="form-label">Template Name:</label>
+                                        <input type="text" class="form-control" id="templateName" name="templateName" placeholder="Enter a name for your template" th:value="${templateName}">
+                                    </div>                                    <input type="hidden" id="templateId" name="templateId" th:value="${templateId}">
+                                    <label for="htmlEditor" class="form-label visually-hidden">HTML Content:</label> <!-- Visually hidden label for accessibility -->
+                                    <textarea id="htmlEditor" name="htmlContent" th:text="${htmlContent}" aria-label="HTML Content Editor"></textarea>
+                                </form>
+                            </div>
+                            <div class="tab-pane fade" id="live-preview" role="tabpanel" aria-labelledby="live-preview-tab">
+                                <iframe id="previewFrame" class="preview-frame" title="HTML Content Preview"></iframe>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="row">
+            <div class="col-12">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <button id="saveBtn" class="btn btn-info me-2" onclick="saveHtmlTemplate()">Save Template</button>
+                    </div>
+                    <div>
+                        <button id="previewBtn" class="btn btn-primary me-2" onclick="previewPdf()">Preview PDF</button>
+                        <button id="generateBtn" class="btn btn-success" onclick="generatePdf()">Download PDF</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Saved Templates Section -->
+    <section class="bg-light py-5">
+        <div class="container">
+            <h2 class="mb-4">Saved Templates</h2>
+            <div th:if="${htmlTemplates != null and not #lists.isEmpty(htmlTemplates)}">
+                <ul class="list-group">
+                    <li class="list-group-item d-flex justify-content-between align-items-center" th:each="template : ${htmlTemplates}">
+                        <a th:href="@{'/templates?templateId=' + ${template.id}}" th:text="${template.name}">Template Name</a>
+                        <div>
+                            <a th:href="@{'/templates/preview-raw?templateId=' + ${template.id}}" class="btn btn-sm btn-outline-secondary me-2" target="_blank">Preview Raw</a>
+                            <a th:href="@{'/templates/delete/' + ${template.id}}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Are you sure you want to delete this template?');">Delete</a>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+            <div th:if="${htmlTemplates == null or #lists.isEmpty(htmlTemplates)}">
+                <p>No saved templates found.</p>
+            </div>
+        </div>
+    </section>
+    
+    <!-- Footer -->
+    <div th:replace="~{fragments/footer :: page-footer}"></div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        let ckeditorInstance;
+
+        ClassicEditor
+            .create(document.querySelector('#htmlEditor'), {
+                // CKEditor 5 configuration options can go here
+                // For example, to include more plugins, you might need a custom build
+                // The default Classic build includes many common features like tables, images, lists etc.
+                toolbar: {
+                    items: [
+                        'undo', 'redo',
+                        '|', 'heading',
+                        '|', 'bold', 'italic', 'underline', 'strikethrough',
+                        '|', 'link', 'insertImage', 'insertTable', 'blockQuote', 'mediaEmbed',
+                        '|', 'bulletedList', 'numberedList', 'outdent', 'indent',
+                        '|', 'alignment',
+                        '|', 'fontFamily', 'fontSize', 'fontColor', 'fontBackgroundColor',
+                        '|', 'code', 'codeBlock',
+                        '|', 'removeFormat', 'sourceEditing' // sourceEditing for HTML view
+                    ],
+                    shouldNotGroupWhenFull: true
+                },
+                table: {
+                    contentToolbar: [
+                        'tableColumn', 'tableRow', 'mergeTableCells',
+                        'tableProperties', 'tableCellProperties'
+                    ]
+                },
+                // Ensure the initial content from th:text is loaded
+                // CKEditor usually picks this up from the textarea
+            })
+            .then(editor => {
+                ckeditorInstance = editor;
+                console.log('CKEditor 5 was initialized', editor);
+
+                // Live preview update on change
+                editor.model.document.on('change:data', () => {
+                    if (document.getElementById('live-preview').classList.contains('active')) {
+                        updatePreview();
+                    }
+                    // Keep the textarea updated for form submission
+                    const htmlEditorTextarea = document.getElementById('htmlEditor');
+                    if (htmlEditorTextarea) {
+                        htmlEditorTextarea.value = editor.getData();
+                    }
+                });
+            })
+            .catch(error => {
+                console.error('There was a problem initializing CKEditor 5:', error);
+            });
+
+        // Aggiorna anteprima quando si cambia tab
+        document.getElementById('live-preview-tab').addEventListener('shown.bs.tab', function () {
+            updatePreview();
+        });
+        
+        // Aggiorna anteprima HTML
+        function updatePreview() {
+            if (!ckeditorInstance) return;
+            var previewFrame = document.getElementById('previewFrame');
+            var previewDoc = previewFrame.contentDocument || previewFrame.contentWindow.document;
+            previewDoc.open();
+            previewDoc.write(ckeditorInstance.getData());
+            previewDoc.close();
+        }
+        
+        function updateTextareaBeforeSubmit() {
+            if (ckeditorInstance) {
+                const htmlEditorTextarea = document.getElementById('htmlEditor');
+                if (htmlEditorTextarea) {
+                    htmlEditorTextarea.value = ckeditorInstance.getData();
+                }
+            }
+        }
+
+        // Anteprima PDF
+        function previewPdf() {
+            updateTextareaBeforeSubmit();
+            var form = document.getElementById('htmlForm');
+            // This function is intended to preview the current editor content.
+            // The closest equivalent is PdfSimpleGenController's /simple-generate/create
+            // which takes htmlContent and returns a PDF.
+            // Note: This will act like a download, not an inline preview in a new tab as /generate/preview might have.
+            // For a true page preview of current content, a new endpoint would be needed.
+            // For previewing a *saved* template on a page: /templates/preview-page?templateId=... (GET)
+            // For raw HTML of a *saved* template: /templates/preview-raw?templateId=... (GET)
+            form.action = "/simple-generate/create"; // Changed to use direct HTML to PDF generation
+            form.target = "_blank"; // This will open/download the PDF
+            form.submit();
+        }
+        
+        // Genera PDF
+        function generatePdf() {
+            updateTextareaBeforeSubmit();
+            var form = document.getElementById('htmlForm');
+            // This function is for downloading the current editor content as PDF.
+            // PdfSimpleGenController's /simple-generate/create is suitable.
+            form.action = "/simple-generate/create"; // Changed to use direct HTML to PDF generation
+            form.target = "_blank"; // This will open/download the PDF
+            form.submit();
+        }
+        
+        // Salva Template HTML
+        function saveHtmlTemplate() {
+            updateTextareaBeforeSubmit();
+            var form = document.getElementById('htmlForm');
+            form.action = "/templates/save"; // Changed to new save endpoint
+            form.target = "_self";
+            form.submit();
+        }
+    </script>
+</body>
+</html>

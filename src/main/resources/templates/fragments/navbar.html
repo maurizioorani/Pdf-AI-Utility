@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<body>
+    <!-- Navigation Fragment -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary" th:fragment="page-navbar (activePage)">
+        <div class="container">
+            <a class="navbar-brand" th:href="@{/}">PDF Utility</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" th:classappend="${activePage == 'home' ? 'active' : ''}" aria-current="page" th:href="@{/}">Home</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" th:classappend="${activePage == 'templates' ? 'active' : ''}" th:href="@{/templates}">Generate PDF</a>
+                    </li>
+                     <li class="nav-item">
+                        <a class="nav-link" th:classappend="${activePage == 'upload-convert' ? 'active' : ''}" th:href="@{/upload-convert}">Convert File</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" th:classappend="${activePage == 'ocr' ? 'active' : ''}" th:href="@{/ocr}">OCR</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" th:classappend="${activePage == 'merge' ? 'active' : ''}" th:href="@{/merge}">Merge PDFs</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" th:classappend="${activePage == 'compress' ? 'active' : ''}" th:href="@{/compress}">Compress PDF</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" th:classappend="${activePage == 'split' ? 'active' : ''}" th:href="@{/split}">Split PDF</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" th:classappend="${activePage == 'protect' ? 'active' : ''}" th:href="@{/protect}">Protect PDF</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" th:classappend="${activePage == 'extract' ? 'active' : ''}" th:href="@{/extract}">Knowledge Extractor</a>
+                    </li>
+                    <li class="nav-item" th:if="${activePage == 'simple-generate'}"> <!-- Only show if on simple_generate page -->
+                        <a class="nav-link active" aria-current="page" th:href="@{/simple-generate}">Simple Generate</a>
+                    </li>
+                    <!-- "Help" and "About" links are intentionally removed -->
+                </ul>
+            </div>
+        </div>
+    </nav>
+</body>
+</html>

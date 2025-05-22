@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF Preview</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}" />
+</head>
+<body class="preview-body">
+    <div class="preview-toolbar no-print">
+        <h3>PDF Preview</h3>
+        <div>
+            <button onclick="window.print();" class="btn-print-preview">Print</button>
+            <button onclick="window.close();" class="btn-close-preview">Close</button>
+            <form th:action="@{/simple-generate/create}" method="post" class="form-inline-display">
+                <input type="hidden" name="htmlContent" th:value="${htmlContent}" />
+                <button type="submit" class="btn-download-preview">Download PDF</button>
+            </form>
+        </div>
+    </div>
+    
+    <div class="content a4-preview" th:utext="${htmlContent}">
+        <!-- Il contenuto HTML verrà inserito qui -->
+    </div>
+</body>
+</html>

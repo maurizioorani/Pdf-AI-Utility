@@ -1,0 +1,71 @@
+version: '3.8' # Updated to a more recent version for better features like depends_on condition
+
+services:
+  postgres:
+    image: postgres:15-alpine # Using a specific version, alpine for smaller size
+    container_name: pdfdemo_postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: pdfuser # Changed from default postgres
+      POSTGRES_PASSWORD: pdfpassword # Changed from test123
+      POSTGRES_DB: pdfdb # Changed from default_database
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pdfuser -d pdfdb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: pdfdemo_ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama # Persist Ollama models
+    # For GPU support (optional, uncomment and adjust if you have NVIDIA GPU and drivers):
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1 # or 'all'
+    #           capabilities: [gpu]
+    healthcheck:
+      test: ["CMD-SHELL", "ollama list || exit 1"] # Basic check if ollama command runs
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  pdfdemo-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: pdfdemo_app
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: postgres
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/pdfdb
+      SPRING_DATASOURCE_USERNAME: pdfuser
+      SPRING_DATASOURCE_PASSWORD: pdfpassword
+      # App connects to the ollama service within the Docker network
+      OLLAMA_BASE_URL: http://ollama:11434
+      # TESSDATA_PREFIX is usually not needed if Tesseract is installed system-wide in the image
+      # and Tess4J can find it. The app.ocr.tessdata-path property can be removed or left empty.
+      # APP_OCR_TESSDATA-PATH: "" # Or remove this line if OcrConfig handles empty path well
+      JAVA_OPTS: "-Xmx512m -Djava.awt.headless=true"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      ollama: # Depends on Ollama, though a simple healthcheck for Ollama is tricky
+        condition: service_started # Wait for ollama to start; true health depends on model availability
+    # No need to mount tessdata as it's now part of the pdfdemo-app image
+
+volumes:
+  postgres_data:
+    driver: local
+  ollama_data: # Volume for Ollama models
+    driver: local

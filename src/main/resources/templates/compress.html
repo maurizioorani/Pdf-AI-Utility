@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Compress PDF - PDF Utility</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link rel="stylesheet" th:href="@{/css/style.css}" />
+</head>
+<body>
+    <div th:replace="~{fragments/navbar :: page-navbar (activePage='compress')}"></div>
+
+    <section class="hero-section text-center">
+        <div class="container">
+            <h1 class="display-3 fw-bold mb-4">Optimize PDF File</h1>
+            <p class="lead">Upload a PDF file to attempt basic optimization. This may reduce file size for some PDFs by restructuring them, but does not perform aggressive (lossy) image compression.</p>
+        </div>
+    </section>
+
+    <div class="container my-5">
+        <div th:if="${successMessage}" class="alert alert-success alert-dismissible fade show" role="alert">
+            <span th:text="${successMessage}"></span>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        <div th:if="${errorMessage}" class="alert alert-danger alert-dismissible fade show" role="alert">
+            <span th:text="${errorMessage}"></span>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h2>Upload PDF to Compress</h2>
+            </div>
+            <div class="card-body">
+                <form method="POST" th:action="@{/compress}" enctype="multipart/form-data">
+                    <div class="mb-3">
+                        <label for="pdfFile" class="form-label">Select PDF File:</label>
+                        <input type="file" class="form-control" id="pdfFile" name="pdfFile" accept=".pdf" required />
+                    </div>
+                    <div class="mb-3">
+                        <label for="outputFilename" class="form-label">Output Filename (optional):</label>
+                        <input type="text" class="form-control" id="outputFilename" name="outputFilename" placeholder="optimized_document.pdf" />
+                         <div class="form-text">If left blank, a default name like "optimized_original_name.pdf" will be used.</div>
+                    </div>
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" class="form-check-input" id="compressImages" name="compressImages" value="true">
+                        <label class="form-check-label" for="compressImages">Attempt to compress images (lossy, may reduce quality)</label>
+                        <div class="form-text">This can significantly reduce file size if the PDF contains large uncompressed or high-quality images, but may degrade image quality.</div>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Optimize PDF</button>
+                </form>
+            </div>
+        </div>
+        
+        <div class="footer-links mt-4 text-center">
+            <a href="/" class="btn btn-outline-secondary">Back to Home</a>
+        </div>
+    </div>
+
+    <div th:replace="~{fragments/footer :: page-footer}"></div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

@@ -1,0 +1,3 @@
+Questo è un semplice file di testo creato per testare la funzionalità OCR.
+Contiene testo italiano semplice che dovrebbe essere riconosciuto dal motore OCR.
+Il testo dovrebbe essere estratto correttamente quando elaborato attraverso l'applicazione.

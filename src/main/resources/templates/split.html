@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Split PDF - PDF Utility</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link rel="stylesheet" th:href="@{/css/style.css}" />
+</head>
+<body>
+    <div th:replace="~{fragments/navbar :: page-navbar (activePage='split')}"></div>
+
+    <section class="hero-section text-center">
+        <div class="container">
+            <h1 class="display-3 fw-bold mb-4">Split PDF File</h1>
+            <p class="lead">Upload a PDF file to split it into multiple documents (e.g., one file per page).</p>
+        </div>
+    </section>
+
+    <div class="container my-5">
+        <div th:if="${successMessage}" class="alert alert-success alert-dismissible fade show" role="alert">
+            <span th:text="${successMessage}"></span>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        <div th:if="${errorMessage}" class="alert alert-danger alert-dismissible fade show" role="alert">
+            <span th:text="${errorMessage}"></span>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h2>Upload PDF to Split</h2>
+            </div>
+            <div class="card-body">
+                <form method="POST" th:action="@{/split}" enctype="multipart/form-data">
+                    <div class="mb-3">
+                        <label for="pdfFile" class="form-label">Select PDF File:</label>
+                        <input type="file" class="form-control" id="pdfFile" name="pdfFile" accept=".pdf" required />
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="splitOption" class="form-label">Split Option:</label>
+                        <select class="form-select" id="splitOption" name="splitOption">
+                            <option value="every_page" selected>Split every page into a separate PDF</option>
+                            <!-- Add more options later e.g., by range -->
+                        </select>
+                    </div>
+
+                    <!-- Placeholder for page range input, initially hidden -->
+                    <!--
+                    <div class="mb-3" id="pageRangeInput" style="display: none;">
+                        <label for="pageRanges" class="form-label">Page Ranges (e.g., 1-3, 5, 7-9):</label>
+                        <input type="text" class="form-control" id="pageRanges" name="pageRanges" placeholder="e.g., 1-3, 5, 7-9">
+                        <div class="form-text">Specify single pages or ranges separated by commas.</div>
+                    </div>
+                    -->
+                    
+                    <button type="submit" class="btn btn-primary">Split PDF</button>
+                </form>
+            </div>
+        </div>
+        
+        <div class="footer-links mt-4 text-center">
+            <a href="/" class="btn btn-outline-secondary">Back to Home</a>
+        </div>
+    </div>
+
+    <div th:replace="~{fragments/footer :: page-footer}"></div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!--
+    <script>
+        document.getElementById('splitOption').addEventListener('change', function() {
+            var pageRangeInput = document.getElementById('pageRangeInput');
+            if (this.value === 'custom_range') {
+                pageRangeInput.style.display = 'block';
+                document.getElementById('pageRanges').required = true;
+            } else {
+                pageRangeInput.style.display = 'none';
+                document.getElementById('pageRanges').required = false;
+            }
+        });
+    </script>
+    -->
+</body>
+</html>

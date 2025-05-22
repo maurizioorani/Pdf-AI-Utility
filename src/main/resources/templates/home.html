@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title th:text="${title}">PDF Utility Tool</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <!-- Custom CSS -->
+    <link rel="stylesheet" th:href="@{/css/style.css}" />
+</head>
+<body>
+    <!-- Navigation -->
+    <div th:replace="~{fragments/navbar :: page-navbar (activePage='home')}"></div>
+
+    <!-- Hero Section -->
+    <section class="hero-section text-center">
+        <div class="container">
+            <h1 class="display-3 fw-bold mb-4">PDF Utility Tool</h1>
+            <p class="lead mb-4">Efficiently work with PDF documents - create, convert, OCR, and manage your files.</p>
+        </div>
+    </section>
+
+    <!-- Actions Section -->
+    <section class="container my-5">
+        <h2 class="text-center mb-5">Select an Operation</h2>
+        <div class="row g-4">
+            <div class="col-md-4">
+                <a th:href="@{/templates}" class="text-decoration-none">
+                    <div class="card h-100 p-4 text-center">
+                        <div class="feature-icon">
+                            <i class="bi bi-file-earmark-richtext"></i>📄
+                        </div>
+                        <h3>Generate PDF from HTML</h3>
+                        <p>Create or edit HTML content using a rich text editor and convert it to PDF. Manage your HTML templates.</p>
+                    </div>
+                </a>
+            </div>
+            <div class="col-md-4">
+                <a th:href="@{/upload-convert}" class="text-decoration-none">
+                    <div class="card h-100 p-4 text-center">
+                        <div class="feature-icon">
+                            <i class="bi bi-file-earmark-arrow-down"></i>🔄
+                        </div>
+                        <h3>Convert HTML/MD to PDF</h3>
+                        <p>Upload HTML or Markdown files, save them, and convert them to PDF documents.</p>
+                    </div>
+                </a>
+            </div>
+            <div class="col-md-4">
+                <a href="/ocr" class="text-decoration-none"> <!-- Changed href to /ocr -->
+                    <div class="card h-100 p-4 text-center">
+                        <div class="feature-icon">
+                            <i class="bi bi-image-alt"></i>🖼️<i class="bi bi-arrow-right"></i><i class="bi bi-fonts"></i>
+                        </div>
+                        <h3>OCR - Extract Text from Image</h3> <!-- Changed title -->
+                        <p>Upload an image (PNG, JPG, TIFF) and extract text content using Optical Character Recognition (OCR).</p> <!-- Changed description -->
+                    </div>
+                </a>
+            </div>
+            <div class="col-md-4">
+                <a href="/extract" class="text-decoration-none">
+                    <div class="card h-100 p-4 text-center bg-light border-primary">
+                        <div class="feature-icon">
+                            <i class="bi bi-search"></i>📚
+                        </div>
+                        <h3>Knowledge Extractor</h3>
+                        <p>Extract relevant information from large PDFs using LLMs and save key snippets.</p>
+                    </div>
+                </a>
+            </div>
+            <div class="col-md-4">
+                <a href="/merge" class="text-decoration-none">
+                    <div class="card h-100 p-4 text-center">
+                        <div class="feature-icon">
+                            <i class="bi bi-files"></i>➕
+                        </div>
+                        <h3>Merge PDFs</h3>
+                        <p>Combine multiple PDF documents into a single, consolidated file.</p>
+                    </div>
+                </a>
+            </div>
+            <div class="col-md-4">
+                <a href="/split" class="text-decoration-none">
+                    <div class="card h-100 p-4 text-center">
+                        <div class="feature-icon">
+                            <i class="bi bi-scissors"></i>✂️
+                        </div>
+                        <h3>Split PDF</h3>
+                        <p>Divide a PDF document into multiple smaller files or individual pages.</p>
+                    </div>
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Quick Tools Section -->
+    <section class="container my-5">
+        <h2 class="mb-4">Quick Tools</h2>
+        <div class="row g-3">
+            <div class="col-6 col-md-3">
+                <a href="/merge" class="btn btn-outline-primary w-100 py-3">Merge PDFs</a>
+            </div>
+            <div class="col-6 col-md-3">
+                <a href="/compress" class="btn btn-outline-primary w-100 py-3">Compress PDF</a>
+            </div>
+            <div class="col-6 col-md-3">
+                <a href="/split" class="btn btn-outline-primary w-100 py-3">Split PDF</a>
+            </div>
+            <div class="col-6 col-md-3">
+                <a href="/protect" class="btn btn-outline-primary w-100 py-3">Protect PDF</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <div th:replace="~{fragments/footer :: page-footer}"></div>
+
+    <!-- Bootstrap JS Bundle with Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: pdfdemo_postgres_dbonly # Different container name to avoid conflict
+    ports:
+      - "5432:5432" # Exposes on the same host port for local app connection
+    environment:
+      POSTGRES_USER: pdfuser
+      POSTGRES_PASSWORD: pdfpassword
+      POSTGRES_DB: pdfdb
+    volumes:
+      - postgres_data_dbonly:/var/lib/postgresql/data # Separate volume to avoid data conflicts
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pdfuser -d pdfdb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data_dbonly: # Separate named volume
+    driver: local

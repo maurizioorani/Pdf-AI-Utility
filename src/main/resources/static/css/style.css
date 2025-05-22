@@ -1,0 +1,301 @@
+/* General Body Styles */
+body {
+    font-family: Arial, sans-serif;
+    padding: 0; /* Allow full-width hero section */
+    /* background-color: #f4f4f4; */ /* Default or Bootstrap handled */
+    /* color: #333; */ /* Default or Bootstrap handled */
+}
+
+/* Hero Section Styles */
+.hero-section {
+    background: linear-gradient(135deg, #6f42c1 0%, #0dcaf0 100%); /* Purple to Teal gradient */
+    color: white; /* Default text color for hero section content */
+    padding: 4rem 0; /* Consistent padding */
+    margin-bottom: 2rem;
+}
+
+.hero-section h1,
+.hero-section .h1, /* Catches classes like .display-4 if they are not h1 */
+.hero-section .display-3, /* Explicitly target Bootstrap display classes */
+.hero-section .display-4 {
+    color: white !important; /* Ensure title text is white */
+    /* Font family, size, weight will be largely handled by Bootstrap's heading/display classes */
+}
+
+/* Footer Styles */
+.footer {
+    background-color: #f8f9fa;
+    padding: 2rem 0;
+    margin-top: 3rem;
+}
+
+/* Card Styles (Consolidated) */
+.card {
+    transition: transform 0.3s;
+    margin-bottom: 2rem;
+    border: none;
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+    /* cursor: pointer; */ /* Removed default cursor pointer, apply only if card is clickable link wrapper */
+}
+
+.card:hover { /* Apply hover only if it's an interactive card, e.g., wrapped in <a> */
+    /* transform: translateY(-5px); */ /* Consider if this is universally desired */
+}
+
+/* Specific to clickable cards (like in home.html) */
+a > .card:hover {
+    transform: translateY(-5px);
+}
+a > .card {
+    cursor: pointer;
+}
+
+
+/* General Heading Styles (outside hero) */
+h1, .h1,
+h2, .h2 {
+    /* color: #333; */ /* Bootstrap default is usually fine, avoid overriding unless necessary */
+    text-align: center; /* If this is a global preference */
+}
+
+/* OCR Page Specific Styles */
+.ocr-result-box {
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    padding: 15px;
+    border-radius: 5px;
+    min-height: 200px;
+    white-space: pre-wrap;
+    font-family: monospace;
+}
+
+.processing-details {
+    margin-top: 10px;
+    font-size: 0.9rem;
+    color: #6c757d;
+}
+
+.progress-bar { /* Bootstrap usually handles this, but if custom width needed */
+    /* width: 100%; */
+}
+
+.model-selector {
+    width: auto;
+}
+
+.enhanced-text-badge {
+    display: inline-block;
+    padding: 0.25em 0.5em;
+    font-size: 0.875em;
+    border-radius: 0.25rem;
+}
+
+.enhancement-info {
+    margin-top: 8px;
+}
+
+.enhance-form {
+    background-color: #f8f9fa;
+    padding: 15px;
+    border-radius: 5px;
+    margin-bottom: 15px;
+    border: 1px solid #dee2e6;
+}
+
+.comparison-view {
+    display: flex;
+    gap: 20px;
+}
+
+.comparison-view .ocr-result-box {
+    flex: 1;
+}
+
+.comparison-panel {
+    background-color: #f0f8ff;
+    border: 1px solid #b8daff;
+    border-radius: 5px;
+    padding: 10px;
+    margin-top: 15px;
+}
+
+.ocr-metadata {
+    font-size: 0.85rem;
+    color: #6c757d;
+    margin-bottom: 10px;
+}
+
+.monospace-font {
+    font-family: monospace;
+}
+
+/* Convert Page Specific Styles */
+.content-container {
+    background-color: #fff;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    margin: 2rem auto;
+}
+
+label { /* General label styling, might conflict if Bootstrap handles it differently */
+    /* display: block; */ /* Bootstrap form-label usually handles this */
+    /* margin-bottom: 8px; */
+    /* font-weight: bold; */
+}
+
+input[type="file"] { /* Consider using Bootstrap's form-control styling */
+    /* display: block; */
+    /* margin-bottom: 20px; */
+    /* padding: 10px; */
+    /* border: 1px solid #ddd; */
+    /* border-radius: 4px; */
+    /* width: calc(100% - 22px); */
+}
+
+.message {
+    margin-bottom: 15px;
+    padding: 10px;
+    border-radius: 4px;
+}
+
+.message.info {
+    background-color: #e7f3fe;
+    border-left: 6px solid #2196F3;
+    color: #2196F3;
+}
+
+.message.error {
+    background-color: #ffebee;
+    border-left: 6px solid #f44336;
+    color: #f44336;
+}
+
+.footer-links {
+    margin-top: 20px;
+    text-align: center;
+}
+
+.footer-links a {
+    margin: 0 10px;
+    color: #007bff;
+    text-decoration: none;
+}
+
+.footer-links a:hover {
+    text-decoration: underline;
+}
+
+/* Generate Page Specific Styles */
+.ck-editor__editable_inline {
+    min-height: 400px;
+    color: #333; /* Ensure editor text is readable if global body color is light */
+}
+
+.preview-frame {
+    width: 100%;
+    height: 500px;
+    border: 1px solid #ddd;
+}
+
+/* Home Page Specific Styles */
+.feature-icon {
+    font-size: 2.5rem;
+    margin-bottom: 1rem;
+    color: #0d6efd; /* Bootstrap primary color, good */
+}
+
+/* Simple Generate Page Specific Styles */
+textarea { /* General textarea styling, ensure it doesn't override CKEditor */
+    /* min-height: 300px; */ /* This might be too general */
+}
+#htmlContent { /* Specific to simple_generate.html textarea */
+    min-height: 300px;
+}
+
+
+.content-area { /* From simple_generate.html */
+    padding: 0 20px;
+}
+
+/* Preview Page Specific Styles */
+@media print {
+    .no-print {
+        display: none;
+    }
+    body.preview-body { /* Apply print styles only to preview body */
+        margin: 0;
+        padding: 0;
+        font-family: 'Arial', sans-serif;
+    }
+    .content.a4-preview { /* Apply print styles only to preview content */
+        padding: 0;
+        margin: 0;
+        box-shadow: none;
+        border: none;
+    }
+}
+
+.preview-toolbar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    background: linear-gradient(135deg, #6f42c1 0%, #0dcaf0 100%);
+    color: white;
+    padding: 10px 20px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    z-index: 1000;
+}
+.preview-toolbar h3 {
+    color: white; /* Ensure toolbar title is white */
+}
+
+
+/* .content class is used in multiple contexts, be careful with general styling */
+/* This is for preview.html specifically */
+.content.a4-preview {
+    margin-top: 70px; /* Adjusted to ensure content is below the fixed toolbar */
+    padding: 20mm; /* Default padding for screen */
+}
+
+@media screen {
+    body.preview-body {
+        background: #e0e0e0;
+    }
+    .content.a4-preview { /* Styles for A4 simulation on screen */
+        background: white;
+        max-width: 210mm;
+        min-height: 297mm; /* Approximate A4 height */
+        margin: 70px auto 20px; /* Centered with margin for toolbar */
+        box-shadow: 0 5px 10px rgba(0,0,0,0.2);
+    }
+}
+
+.btn-print-preview,
+.btn-close-preview,
+.btn-download-preview {
+    padding: 8px 16px;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+.btn-print-preview {
+    background: #007bff; /* Bootstrap primary */
+}
+.btn-close-preview {
+    background: #6c757d; /* Bootstrap secondary */
+    margin-left: 10px;
+}
+.btn-download-preview {
+    background: #28a745; /* Bootstrap success */
+    margin-left: 10px;
+}
+
+.form-inline-display {
+    display: inline;
+}

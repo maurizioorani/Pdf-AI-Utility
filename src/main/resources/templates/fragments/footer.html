@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<body>
+    <!-- Footer Fragment -->
+    <footer class="footer" th:fragment="page-footer">
+        <div class="container">
+            <div class="row">
+                <div class="col-lg-6 mb-4 mb-lg-0">
+                    <h5>PDF PowerTool Suite</h5>
+                    <p>Your comprehensive solution for PDF management.</p>
+                </div>
+                <div class="col-lg-3 mb-4 mb-lg-0">
+                    <h5>Links</h5>
+                    <ul class="list-unstyled">
+                        <li><a th:href="@{/}" class="text-decoration-none">Home</a></li>
+                        <li><a th:href="@{/templates}" class="text-decoration-none">Generate PDF</a></li>
+                        <li><a th:href="@{/upload-convert}" class="text-decoration-none">Convert File</a></li>
+                        <li><a th:href="@{/ocr}" class="text-decoration-none">OCR</a></li>
+                        <!-- Help and Privacy Policy links removed -->
+                    </ul>
+                </div>
+                <div class="col-lg-3">
+                    <h5>Contact</h5>
+                    <ul class="list-unstyled">
+                        <li><a href="https://www.linkedin.com/in/maurizio-orani-69792266/" target="_blank" rel="noopener noreferrer" class="text-decoration-none">LinkedIn Profile</a></li>
+                    </ul>
+                </div>
+            </div>
+            <hr>
+            <div class="text-center">
+                <p class="mb-0">&copy; <span th:text="${#dates.year(#dates.createNow())}"></span> PDF Utility Tool. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+</body>
+</html>
