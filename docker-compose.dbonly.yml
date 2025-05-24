@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   postgres:
-    image: postgres:15-alpine
+    image: pgvector/pgvector:pg15 # Changed to an image with pgvector support
     container_name: pdfdemo_postgres_dbonly # Different container name to avoid conflict
     ports:
       - "5432:5432" # Exposes on the same host port for local app connection

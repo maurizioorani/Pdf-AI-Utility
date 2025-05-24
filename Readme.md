@@ -1,5 +1,11 @@
 # 📝 PDF PowerTool Suite 🚀
 
+<!-- Images will be placed here -->
+<p align="center">
+  <img src="imgs/one.jpg" alt="Image One" width="400"/>
+  <img src="imgs/two.jpg" alt="Image Two" width="400"/>
+</p>
+
 [![Java Version](https://img.shields.io/badge/Java-17%2B-blue.svg?style=for-the-badge&logo=java)](https://www.oracle.com/java/technologies/javase-jdk17-downloads.html)
 [![Spring Boot Version](https://img.shields.io/badge/Spring%20Boot-3.2.5-brightgreen.svg?style=for-the-badge&logo=spring)](https://spring.io/projects/spring-boot)
 [![Docker Support](https://img.shields.io/badge/Docker-Fully%20Containerized-blue.svg?style=for-the-badge&logo=docker)](tool/pdfdemo/Readme.md#%EF%B8%8F-running-with-docker-compose-recommended)
@@ -41,10 +47,15 @@ This application empowers you to:
     -   Supports asynchronous processing for large PDF files with progress tracking.
     -   **AI-Enhanced OCR Correction**: Improve the accuracy and readability of extracted OCR text using local Large Language Models (LLMs) via Ollama, with support for specialized prompts based on document type (e.g., generic, business, academic, technical, legal, literary, Italian literary) and text chunking for large inputs.
     -   Save and manage OCR results (original and enhanced text).
--   **Knowledge Extractor**:
-    -   Upload a PDF document and provide a natural language query.
-    -   Leverages an LLM (via Ollama) to scan the PDF (after OCR if needed) and extract snippets of text relevant to your query.
-    -   Select and save extracted knowledge snippets for future reference, linked to the source PDF and query.
+-   **💬 Talk with your Documents (Q&A and Knowledge Base Management)**:
+    -   **LangChain4j-Powered RAG**: Utilizes Retrieval Augmented Generation (RAG) for answering questions based on the content of your uploaded PDF documents.
+    -   **Conversational Interface**: Ask questions in natural language through a chat interface.
+    -   **Knowledge Base Creation**: Upload PDF documents to build a searchable knowledge base. Documents are processed, chunked, and their embeddings are stored in a PostgreSQL vector database.
+    -   **Document Management**:
+        - View a list of all documents currently in the knowledge base.
+        - Delete individual documents from the knowledge base.
+        - Clear the entire knowledge base by deleting all documents.
+    -   **Flexible Text Extraction**: Option to use full OCR (slower, for scanned/image-based PDFs, default is now OFF) or attempt direct text extraction (faster, for text-based PDFs) during document upload.
 -   **Merge PDFs**: Combine multiple PDF documents into a single PDF file.
 -   **Optimize/Compress PDF**: Reduce PDF file size through structural optimization and optional lossy image compression.
 -   **Split PDF**: Divide a PDF document into multiple smaller files (currently supports splitting every page into a separate PDF).
@@ -167,21 +178,17 @@ Use this if you want to run the Spring Boot application locally (e.g., from your
 This setup is for running the application directly on your host machine.
 
 #### 🐘 1. Database Setup (Local)
-Choose one of the following:
-*   **PostgreSQL:**
-    1. Install and run PostgreSQL.
-    2. Create a database named `pdfdb`.
-    3. Create a user `pdfuser` with the password `pdfpassword` and grant it permissions on the `pdfdb` database.
-    4. Ensure your `src/main/resources/application-postgres.properties` file has the correct connection details (defaults are `jdbc:postgresql://localhost:5432/pdfdb`, user `pdfuser`, password `pdfpassword`).
-    5. To activate this configuration, you'll need to run the application with the `postgres` profile active. You can do this by:
-        - Setting the environment variable: `SPRING_PROFILES_ACTIVE=postgres`
-        - Passing a command-line argument: `--spring.profiles.active=postgres`
-        - Or, if using Maven: `./mvnw spring-boot:run -Dspring-boot.run.profiles=postgres`
-*   **H2 Database (for development/testing without PostgreSQL):**
-    1. To activate this configuration, run the application with the `dev` profile active (similar methods as above, e.g., `SPRING_PROFILES_ACTIVE=dev`).
-    2. The H2 console will be available at `http://localhost:8080/h2-console` (JDBC URL: `jdbc:h2:mem:testdb`, user: `sa`, no password).
+**PostgreSQL is mandatory for RAG functionality.**
+1.  Install and run PostgreSQL.
+2.  Create a database named `pdfdb`.
+3.  Create a user `pdfuser` with the password `pdfpassword` and grant it permissions on the `pdfdb` database.
+4.  Ensure your `src/main/resources/application-postgres.properties` file has the correct connection details (defaults are `jdbc:postgresql://localhost:5432/pdfdb`, user `pdfuser`, password `pdfpassword`).
+5.  The application is configured to use the `postgres` profile by default (see `src/main/resources/application.properties`). If you need to override this for specific local runs, you can:
+    - Set the environment variable: `SPRING_PROFILES_ACTIVE=postgres`
+    - Pass a command-line argument: `--spring.profiles.active=postgres`
+    - Or, if using Maven: `./mvnw spring-boot:run -Dspring-boot.run.profiles=postgres`
 
-**Note:** The main `src/main/resources/application.properties` no longer sets a default active profile to avoid issues during test runs. You must explicitly activate `postgres` or `dev` for local execution. For tests, the `test` profile (using H2) is automatically activated.
+**Note:** The H2 database configuration (`dev` profile) has been deprecated for main application use as PostgreSQL is required for the RAG features. The `test` profile still uses H2 for unit/integration testing.
 
 #### 🤖 2. Ollama LLM Server (Local)
 1.  Install and run Ollama from [ollama.ai](https://ollama.ai/).
@@ -213,6 +220,22 @@ Access at `http://localhost:8080`.
 ## 🌟 Features Showcase
 
 This section provides a more detailed look into the application's features.
+
+**💬 Talk with your Documents (Formerly Knowledge Extractor):**
+This feature transforms your collection of PDF documents into an interactive knowledge base.
+-   **Upload Documents**:
+    -   Use the "Upload New Document to Knowledge Base" form to add your PDFs.
+    -   Choose whether to "Use OCR" (default is unchecked for faster processing of text-based PDFs).
+    -   Uploaded documents are processed, chunked, and embedded using LangChain4j and stored in a PostgreSQL vector database.
+-   **Ask Questions**:
+    -   A chat interface allows you to ask questions in natural language.
+    -   The system retrieves relevant information from all processed documents in the knowledge base using RAG.
+    -   An LLM generates an answer based on the retrieved context.
+-   **Manage Knowledge Base**:
+    -   View a list of all documents currently processed and available for querying.
+    -   Delete specific documents from the knowledge base if they are no longer needed.
+    -   Option to clear the entire knowledge base.
+
 *(User: Please populate this section with detailed descriptions, screenshots, or GIFs showcasing each feature in action, based on the updated "Core Capabilities" list.)*
 
 ---
@@ -235,7 +258,7 @@ Here's a summary of the main application endpoints:
 | `/compress`               | Page to upload a PDF for optimization/compression.                          | `PdfCompressController.showCompressPage()`              |
 | `/split`                  | Page to upload a PDF for splitting.                                         | `PdfSplitController.showSplitPage()`                    |
 | `/protect`                | Page to upload a PDF to apply password protection.                          | `PdfProtectController.showProtectPage()`                |
-| `/extract`                | Page for the Knowledge Extractor: upload PDF, ask query, view snippets.     | `KnowledgeExtractorController.extractPage()`            |
+| `/extract`                | Page for "Talk with your Documents": Q&A chat, document upload & management.| `KnowledgeExtractorController.extractPage()`            |
 | `/templates/preview-page` | Displays a preview of a saved HTML template (expects `templateId` param).   | `DocumentConversionController.previewTemplatePage()`    |
 
 ### ⚙️ API/Processing Endpoints
@@ -258,9 +281,12 @@ These are primarily form submission targets or backend processing URLs:
 | `/ocr/documents/save`              | POST   | Saves an OCR result (original and enhanced text) as a persistent document.                               | `OcrController.saveDocument()`                                       |
 | `/ocr/documents/save-original`     | POST   | Saves an original OCR result (without enhancement) as a persistent document.                             | `OcrController.saveOriginalDocument()`                               |
 | `/ocr/documents/{id}/delete`       | POST   | Deletes a saved OCR document.                                                                              | `OcrController.deleteDocument()`                                     |
-| `/extract/process`                 | POST   | Handles PDF upload and query for knowledge extraction.                                                     | `KnowledgeExtractorController.handleKnowledgeExtraction()`           |
-| `/extract/save`                    | POST   | Saves selected knowledge snippets.                                                                         | `KnowledgeExtractorController.saveSelectedSnippets()`                |
-| `/extract/snippets/delete/{id}`    | POST   | Deletes a saved knowledge snippet.                                                                         | `KnowledgeExtractorController.deleteSnippet()`                       |
+| `/extract/process`                 | POST   | Handles PDF upload for adding to the knowledge base.                                                       | `KnowledgeExtractorController.handleKnowledgeExtraction()`           |
+| `/extract/ask`                     | POST   | Submits a question to the Q&A system. Returns JSON.                                                        | `KnowledgeExtractorController.askQuestion()`                         |
+| `/extract/documents/delete/{docId}`| POST   | Deletes a specific document from the knowledge base.                                                       | `KnowledgeExtractorController.deleteDocument()`                      |
+| `/extract/documents/delete-all`    | POST   | Deletes all documents from the knowledge base.                                                             | `KnowledgeExtractorController.deleteAllDocuments()`                  |
+| `/extract/save`                    | POST   | Saves selected knowledge snippets (Legacy - UI might be removed).                                          | `KnowledgeExtractorController.saveSelectedSnippets()`                |
+| `/extract/snippets/delete/{id}`    | POST   | Deletes a saved knowledge snippet (Legacy - UI might be removed).                                          | `KnowledgeExtractorController.deleteSnippet()`                       |
 | `/merge`                           | POST   | Processes uploaded PDFs for merging.                                                                       | `PdfMergeController.handlePdfMerge()`                                |
 | `/compress`                        | POST   | Processes an uploaded PDF for compression.                                                                 | `PdfCompressController.handlePdfCompression()`                       |
 | `/split`                           | POST   | Processes an uploaded PDF for splitting.                                                                   | `PdfSplitController.handlePdfSplit()`                                |
@@ -279,14 +305,18 @@ This project leverages a modern Java and Spring ecosystem:
     -   Spring Web: For building web applications, including RESTful APIs.
     -   Spring Data JPA: For database interaction and object-relational mapping.
     -   Spring Validation: For server-side data validation.
-    -   Spring AI (with Ollama starter): For integrating Large Language Model capabilities.
+-   **🧠 LangChain4j**: Advanced AI integration framework for document processing and RAG capabilities.
+    -   **Document Processing**: Intelligent text chunking and segmentation.
+    -   **Embedding Models**: Ollama integration for generating vector embeddings.
+    -   **Vector Operations**: Custom cosine similarity calculations and semantic search.
+    -   **RAG Implementation**: Retrieval Augmented Generation for enhanced LLM responses.
 -   **Thymeleaf**: Server-side Java template engine for creating dynamic HTML views.
 -   **OpenHTMLToPDF & Apache PDFBox**: Libraries for robust PDF generation from HTML content.
 -   **CommonMark**: Java library for parsing Markdown to HTML.
 -   **Tesseract OCR (via Tess4J)**: Optical Character Recognition engine for text extraction from images.
 -   **Ollama**: For running local Large Language Models (LLMs) like Llama3, Mistral, etc., used for OCR text enhancement and knowledge extraction.
--   **PostgreSQL**: Robust open-source relational database (for `postgres` profile).
--   **H2 Database**: In-memory database for development (`dev` profile) and testing (`test` profile).
+-   **PostgreSQL**: Robust open-source relational database with vector storage capabilities for embeddings (mandatory for RAG).
+-   **H2 Database**: In-memory database used for the `test` profile.
 -   **Hibernate**: JPA implementation for data persistence.
 -   **HikariCP**: High-performance JDBC connection pooling.
 -   **Maven**: Build automation and dependency management.
@@ -294,6 +324,56 @@ This project leverages a modern Java and Spring ecosystem:
 -   **Bootstrap 5**: Frontend CSS framework for responsive UI design.
 -   **CKEditor 5**: Rich text editor for HTML template management.
 -   **JUnit 5 & Mockito**: For unit and integration testing.
+
+---
+
+## 🧠 LangChain4j Integration & RAG Capabilities
+
+### **Migration to LangChain4j Framework**
+
+This application has been fully migrated from Spring AI to **LangChain4j** for enhanced document processing and AI capabilities. The integration provides:
+
+#### **📚 Advanced Document Processing**
+- **Intelligent Chunking**: Documents are automatically split into optimal chunks using LangChain4j's document splitters
+- **Vector Embeddings**: Generate high-quality embeddings using Ollama models through LangChain4j APIs
+- **Database Storage**: PostgreSQL-based vector storage with efficient indexing and retrieval
+
+#### **🔍 Semantic Search & RAG**
+- **Similarity Search**: Custom cosine similarity calculations for finding relevant document chunks
+- **Context Retrieval**: Intelligent context gathering for enhanced LLM responses
+- **RAG Pipeline**: Complete Retrieval Augmented Generation workflow for knowledge-based queries
+
+#### **🏗️ Technical Architecture**
+- **SimpleLangChain4jRagService**: Main service handling document processing, embedding generation, and semantic search
+- **Custom Similarity Engine**: Database-based similarity search using mathematical cosine similarity calculations
+- **DocumentChunk Model**: Enhanced with embedding storage and vector operations support
+- **Repository Layer**: Optimized queries for vector operations and knowledge management
+
+#### **💡 Key Features**
+- **Document Upload & Processing**: Automatic text extraction, chunking, and embedding generation
+- **Natural Language Queries**: Ask questions about uploaded documents using natural language
+- **Knowledge Extraction**: Extract and save relevant snippets linked to source documents
+- **Configurable Processing**: Adjustable chunk size, overlap, and similarity thresholds
+- **Async Processing**: Background document processing with progress tracking
+
+#### **🚀 Performance Optimizations**
+- **Efficient Vector Storage**: PostgreSQL-based storage with proper indexing
+- **Caching**: Content-based caching for embedding generation
+- **Batch Processing**: Optimized handling of large documents
+- **Custom Similarity**: Fast cosine similarity calculations without external dependencies
+
+### **Migration Benefits**
+The LangChain4j integration provides several advantages over the previous Spring AI implementation:
+
+| Feature | Spring AI | LangChain4j | Improvement |
+|---------|-----------|-------------|-------------|
+| Document Processing | Basic text splitting | Advanced chunking strategies | ✅ Better context preservation |
+| Vector Operations | Limited API support | Full vector pipeline | ✅ Complete RAG capabilities |
+| Embedding Models | Simple integration | Rich model ecosystem | ✅ Better model flexibility |
+| Similarity Search | External dependency | Custom implementation | ✅ No external API dependencies |
+| Configuration | Basic options | Comprehensive settings | ✅ Fine-tuned control |
+
+The application now provides enterprise-grade RAG capabilities while maintaining the same user-friendly interface for document upload and knowledge extraction.
 
 ---
 
@@ -308,15 +388,26 @@ We're always looking to improve! Here are some features planned for future relea
 - 🔍 **Dynamic Ollama Model Listing**: Automatically fetch and display available LLM models from the Ollama API.
 - 🔐 **Enhanced PDF Permissions**: Offer more fine-grained control over document permissions when applying password protection (e.g., allow/disallow commenting, form filling).
 - ✨ **Improved Docker Image**: Further optimize the application's Docker image for size and startup speed.
+- 🚀 **Advanced RAG Features**: Expand LangChain4j integration with more sophisticated document analysis and multi-modal capabilities.
+- 📊 **Knowledge Analytics**: Add analytics and insights about document knowledge bases and query patterns.
+
+### ✅ **Recently Completed**
+- **🧠 LangChain4j Integration**: Complete migration from Spring AI to LangChain4j framework (✅ COMPLETED)
+- **📚 Advanced RAG Capabilities**: Semantic search, vector embeddings, and intelligent document processing (✅ COMPLETED)
+- **🔧 Custom Similarity Engine**: Database-based cosine similarity calculations for improved performance (✅ COMPLETED)
 
 ---
 
 ## 🙌 Credits & License
 
 -   **Author**: Maurizio Orani
--   **Inspiration & Core Libraries**: This project builds upon the robust capabilities of the Spring Framework, Apache PDFBox, OpenHTMLToPDF, CommonMark, Tess4J, and Spring AI with Ollama.
+-   **Inspiration & Core Libraries**: This project builds upon the robust capabilities of the Spring Framework, Apache PDFBox, OpenHTMLToPDF, CommonMark, Tess4J, and **LangChain4j** for advanced AI document processing.
+-   **AI Framework**: Powered by **LangChain4j** for state-of-the-art document processing, vector embeddings, and RAG capabilities.
+-   **LLM Integration**: Local AI capabilities provided by **Ollama** for enhanced OCR correction and knowledge extraction.
 -   **License**: This project is intended for personal use and learning. Please review individual library licenses if you plan to use components in other contexts.
 
 ---
 
-Enjoy managing and manipulating your PDFs with ease! 🚀
+**🎉 LangChain4j Integration Complete!** This application now features enterprise-grade RAG capabilities for advanced document intelligence and knowledge extraction.
+
+Enjoy managing and manipulating your PDFs with cutting-edge AI assistance! 🚀

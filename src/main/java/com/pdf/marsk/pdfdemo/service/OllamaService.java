@@ -89,11 +89,14 @@ public class OllamaService {
         try {
             String promptText;
             if (customPromptToUse != null && !customPromptToUse.trim().isEmpty()) {
-                promptText = customPromptToUse.contains("%s") 
-                    ? String.format(customPromptToUse, text) 
-                    : customPromptToUse + "\n\n" + text; // Fallback if %s is missing
+                // If customPromptToUse is provided, it's assumed to be the complete and final prompt.
+                // The 'text' parameter (the chunk) is expected to be already incorporated into customPromptToUse
+                // by the caller (e.g., KnowledgeExtractorService.createEnhancedPrompt).
+                promptText = customPromptToUse;
+                logger.info("Using provided custom prompt directly for model {}", modelName);
             } else {
-                // Default generic prompt
+                // Default generic OCR correction prompt if no custom prompt is supplied
+                logger.info("No custom prompt provided, using default 'generic' OCR correction prompt for model {}", modelName);
                 promptText = getSpecializedPrompt("generic", text);
             }
             
@@ -105,6 +108,8 @@ public class OllamaService {
             LlmResponseResult result = detectAndFixProblematicResponse(text, llmResponse, modelName);
             
             logger.info("Successfully enhanced OCR text. Fix applied: {}", result.wasFixed());
+            // The EnhancementResult was for OCR correction. For Q&A, we might not want this structure.
+            // However, the immediate issue is the fix logic itself.
             return new EnhancementResult(result.getText(), result.wasFixed());
             
         } catch (Exception e) {
@@ -199,6 +204,37 @@ public class OllamaService {
         }
         public String getEnhancedText() { return enhancedText; }
         public boolean wasAnalysisFixed() { return wasAnalysisFixed; }
+    }
+
+    /**
+     * Generates a response from the LLM for a given prompt without applying OCR-specific fixing logic.
+     * This is intended for more general Q&A or summarization tasks.
+     *
+     * @param fullPrompt The complete prompt to send to the LLM.
+     * @param modelName The name of the Ollama model to use.
+     * @return The raw response from the LLM.
+     */
+    public String generateResponse(String fullPrompt, String modelName) {
+        if (fullPrompt == null || fullPrompt.trim().isEmpty()) {
+            logger.warn("Empty prompt provided for LLM generation.");
+            return ""; // Or throw IllegalArgumentException
+        }
+        if (modelName == null || modelName.trim().isEmpty()) {
+            logger.warn("No model specified for LLM generation.");
+            return "Error: Model name not specified."; // Or throw
+        }
+
+        try {
+            logger.info("Generating LLM response with model: {} for prompt (first 100 chars): {}", modelName, fullPrompt.substring(0, Math.min(100, fullPrompt.length())));
+            UserMessage userMessage = new UserMessage(fullPrompt);
+            Prompt prompt = new Prompt(userMessage);
+            String llmResponse = chatClient.call(prompt).getResult().getOutput().getContent();
+            logger.info("Successfully received raw response from LLM model {}", modelName);
+            return llmResponse;
+        } catch (Exception e) {
+            logger.error("Error generating raw LLM response with model {}: {}", modelName, e.getMessage(), e);
+            return "Error: Could not get a response from the LLM."; // Fallback error message
+        }
     }
 
     public List<String> getAvailableModels() {

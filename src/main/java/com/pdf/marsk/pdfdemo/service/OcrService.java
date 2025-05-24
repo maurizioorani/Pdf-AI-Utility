@@ -16,6 +16,7 @@ import javax.imageio.ImageIO;
 
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.rendering.PDFRenderer;
+import org.apache.pdfbox.text.PDFTextStripper; // Added for direct text extraction
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -184,7 +185,63 @@ public class OcrService {
                 }
             }
         }
-    }    private String processPdfFile(File pdfFile) throws IOException, TesseractException {
+    }
+
+    /**
+     * Extracts text directly from a PDF file without performing OCR.
+     * Uses PDFBox's PDFTextStripper.
+     *
+     * @param file The MultipartFile representing the PDF.
+     * @return The extracted text, or an empty string if no text could be extracted or an error occurred.
+     * @throws IOException If there is an error reading the file.
+     */
+    public String extractTextDirectly(MultipartFile file) throws IOException {
+        if (file == null || file.isEmpty()) {
+            logger.warn("Attempted to extract text directly from a null or empty file.");
+            return "";
+        }
+        String originalFilename = file.getOriginalFilename() != null ? file.getOriginalFilename() : "unknown.pdf";
+        logger.info("Attempting direct text extraction from PDF: {}", originalFilename);
+
+        Path tempFile = null;
+        try {
+            tempFile = Files.createTempFile("direct_text_extract_", "_" + originalFilename);
+            try (FileOutputStream fos = new FileOutputStream(tempFile.toFile())) {
+                fos.write(file.getBytes());
+            }
+
+            try (PDDocument document = PDDocument.load(tempFile.toFile())) {
+                if (document.isEncrypted()) {
+                    logger.warn("PDF file {} is encrypted. Cannot extract text directly.", originalFilename);
+                    // Optionally, you could try to decrypt with an empty password, but this often fails.
+                    // document.setAllSecurityToBeRemoved(true); // Requires BouncyCastle
+                    return ""; // Or throw a specific exception
+                }
+                PDFTextStripper stripper = new PDFTextStripper();
+                String text = stripper.getText(document);
+                logger.info("Successfully extracted text directly from PDF: {}. Length: {} chars.", originalFilename, text.length());
+                
+                // Optionally save this extracted text similar to how OCR results are saved
+                // OcrTextDocument doc = new OcrTextDocument(originalFilename, text, "N/A_DIRECT_EXTRACTION");
+                // ocrTextDocumentRepository.save(doc);
+
+                return text;
+            }
+        } catch (IOException e) {
+            logger.error("IOException during direct text extraction for {}: {}", originalFilename, e.getMessage(), e);
+            throw e; // Re-throw to be handled by the caller
+        } finally {
+            if (tempFile != null) {
+                try {
+                    Files.deleteIfExists(tempFile);
+                } catch (IOException e) {
+                    logger.warn("Could not delete temporary file {} used for direct text extraction: {}", tempFile.toString(), e.getMessage());
+                }
+            }
+        }
+    }
+    
+    private String processPdfFile(File pdfFile) throws IOException, TesseractException {
         return processPdfFile(pdfFile, "eng", null); // Default to English, no progress tracking
     }
       private String processPdfFile(File pdfFile, String language) throws IOException, TesseractException {

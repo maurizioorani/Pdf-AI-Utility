@@ -2,7 +2,7 @@ version: '3.8' # Updated to a more recent version for better features like depen
 
 services:
   postgres:
-    image: postgres:15-alpine # Using a specific version, alpine for smaller size
+    image: pgvector/pgvector:pg15 # Changed to an image with pgvector support
     container_name: pdfdemo_postgres
     ports:
       - "5432:5432"

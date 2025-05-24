@@ -71,7 +71,7 @@ class KnowledgeExtractorServiceTest {
         // For now, we primarily test that createKnowledgeExtractionTask is called and return the ID.
         // The actual logic is in performExtractionAsync which is tested separately.
 
-        String taskIdResult = knowledgeExtractorService.extractKnowledgeAsync(dummyPdfFile, query, modelName, lang);
+        String taskIdResult = knowledgeExtractorService.extractKnowledgeAsync(dummyPdfFile, query, modelName, lang, true); // Added true for useOcr
 
         assertEquals(dummyTaskId, taskIdResult);
         verify(progressTrackingService).createKnowledgeExtractionTask(eq(dummyPdfFile.getOriginalFilename()), eq(query), eq(modelName));
@@ -90,8 +90,8 @@ class KnowledgeExtractorServiceTest {
         when(ocrService.performOcr(any(MockMultipartFile.class), eq(lang))).thenReturn(ocrText);
         when(ollamaService.enhanceText(anyString(), eq(modelName), isNull(), eq(false))).thenReturn(enhancementResult);
 
-        CompletableFuture<List<String>> future = knowledgeExtractorService.performExtractionAsync(dummyTaskId, dummyPdfFile, query, modelName, lang);
-        List<String> snippets = future.get(); 
+        CompletableFuture<List<String>> future = knowledgeExtractorService.performExtractionAsync(dummyTaskId, dummyPdfFile, query, modelName, lang, true); // Added true for useOcr
+        List<String> snippets = future.get();
 
         assertNotNull(snippets);
         assertEquals(2, snippets.size());
@@ -114,7 +114,7 @@ class KnowledgeExtractorServiceTest {
         when(ocrService.performOcr(any(MockMultipartFile.class), eq(lang))).thenReturn(ocrText);
         when(ollamaService.enhanceText(anyString(), eq(modelName), isNull(), eq(false))).thenReturn(enhancementResult);
 
-        CompletableFuture<List<String>> future = knowledgeExtractorService.performExtractionAsync(dummyTaskId, dummyPdfFile, query, modelName, lang);
+        CompletableFuture<List<String>> future = knowledgeExtractorService.performExtractionAsync(dummyTaskId, dummyPdfFile, query, modelName, lang, true); // Added true for useOcr
         List<String> snippets = future.get();
 
         assertNotNull(snippets);
@@ -129,7 +129,7 @@ class KnowledgeExtractorServiceTest {
         String lang = "eng";
         when(ocrService.performOcr(any(MockMultipartFile.class), eq(lang))).thenReturn("");
         
-        CompletableFuture<List<String>> future = knowledgeExtractorService.performExtractionAsync(dummyTaskId, dummyPdfFile, "query", "model", lang);
+        CompletableFuture<List<String>> future = knowledgeExtractorService.performExtractionAsync(dummyTaskId, dummyPdfFile, "query", "model", lang, true); // Added true for useOcr
         List<String> snippets = future.get();
         
         assertTrue(snippets.isEmpty());
@@ -143,7 +143,7 @@ class KnowledgeExtractorServiceTest {
         OllamaService.EnhancementResult emptyResult = new OllamaService.EnhancementResult("", false);
         when(ollamaService.enhanceText(anyString(), anyString(), isNull(), anyBoolean())).thenReturn(emptyResult);
         
-        CompletableFuture<List<String>> future = knowledgeExtractorService.performExtractionAsync(dummyTaskId, dummyPdfFile, "query", "model", lang);
+        CompletableFuture<List<String>> future = knowledgeExtractorService.performExtractionAsync(dummyTaskId, dummyPdfFile, "query", "model", lang, true); // Added true for useOcr
         List<String> snippets = future.get();
 
         assertTrue(snippets.isEmpty());
@@ -155,7 +155,7 @@ class KnowledgeExtractorServiceTest {
         String lang = "eng";
         when(ocrService.performOcr(any(MockMultipartFile.class), eq(lang))).thenThrow(new IOException("OCR Read Error"));
         
-        CompletableFuture<List<String>> future = knowledgeExtractorService.performExtractionAsync(dummyTaskId, dummyPdfFile, "query", "model", lang);
+        CompletableFuture<List<String>> future = knowledgeExtractorService.performExtractionAsync(dummyTaskId, dummyPdfFile, "query", "model", lang, true); // Added true for useOcr
         
         ExecutionException ex = assertThrows(ExecutionException.class, future::get);
         assertTrue(ex.getCause() instanceof IOException);
@@ -168,7 +168,7 @@ class KnowledgeExtractorServiceTest {
         when(ocrService.performOcr(any(MockMultipartFile.class), eq(lang))).thenReturn("ocr text");
         when(ollamaService.enhanceText(anyString(), anyString(), isNull(), anyBoolean())).thenThrow(new RuntimeException("LLM unavailable"));
         
-        CompletableFuture<List<String>> future = knowledgeExtractorService.performExtractionAsync(dummyTaskId, dummyPdfFile, "query", "model", lang);
+        CompletableFuture<List<String>> future = knowledgeExtractorService.performExtractionAsync(dummyTaskId, dummyPdfFile, "query", "model", lang, true); // Added true for useOcr
 
         ExecutionException ex = assertThrows(ExecutionException.class, future::get);
         assertTrue(ex.getCause() instanceof RuntimeException);
@@ -220,7 +220,7 @@ class KnowledgeExtractorServiceTest {
             return new OllamaService.EnhancementResult("No match in prompt", false);
         });
 
-        CompletableFuture<List<String>> future = knowledgeExtractorService.performExtractionAsync(dummyTaskId, dummyPdfFile, query, modelName, lang);
+        CompletableFuture<List<String>> future = knowledgeExtractorService.performExtractionAsync(dummyTaskId, dummyPdfFile, query, modelName, lang, true); // Added true for useOcr
         List<String> snippets = future.get();
 
         assertNotNull(snippets);

@@ -1,5 +1,6 @@
 package com.pdf.marsk.pdfdemo.service;
 
+import java.util.List; // Added import
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -116,6 +117,29 @@ public class ProgressTrackingService {
             info.setSuccess(success);
             info.setMessage(result); // This message could be the final result or an error.
             info.setProgressPercent(100);
+        }
+    }
+
+    /**
+     * Marks a Knowledge Extraction task as completed and stores the extracted snippets.
+     *
+     * @param taskId The task ID
+     * @param success Whether the task completed successfully
+     * @param snippets The list of extracted snippets
+     * @param message A summary message (e.g., "X snippets extracted.")
+     */
+    public void completeTask(String taskId, boolean success, List<String> snippets, String message) {
+        TaskProgressInfo info = progressMap.get(taskId);
+        if (info instanceof KnowledgeExtractionProgressInfo keInfo) {
+            keInfo.setCompleted(true);
+            keInfo.setSuccess(success);
+            keInfo.setExtractedSnippets(snippets); // Store the actual snippets
+            keInfo.setMessage(message); // Store the summary message
+            keInfo.setProgressPercent(100);
+        } else if (info != null) {
+            // Fallback for other task types or if somehow the wrong type is passed
+            // This maintains compatibility with the generic completeTask
+            completeTask(taskId, success, message);
         }
     }
 
