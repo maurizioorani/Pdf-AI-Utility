@@ -1,17 +1,17 @@
 # 📝 PDF PowerTool Suite 🚀
 
-<!-- Images will be placed here -->
-<p align="center">
-  <img src="imgs/one.jpg" alt="Image One" width="400"/>
-  <img src="imgs/two.jpg" alt="Image Two" width="400"/>
-</p>
-
+<!-- Badges will be placed here -->
 [![Java Version](https://img.shields.io/badge/Java-17%2B-blue.svg?style=for-the-badge&logo=java)](https://www.oracle.com/java/technologies/javase-jdk17-downloads.html)
 [![Spring Boot Version](https://img.shields.io/badge/Spring%20Boot-3.2.5-brightgreen.svg?style=for-the-badge&logo=spring)](https://spring.io/projects/spring-boot)
 [![Docker Support](https://img.shields.io/badge/Docker-Fully%20Containerized-blue.svg?style=for-the-badge&logo=docker)](tool/pdfdemo/Readme.md#%EF%B8%8F-running-with-docker-compose-recommended)
 [![License](https://img.shields.io/badge/License-Personal%20Use-lightgrey.svg?style=for-the-badge)](tool/pdfdemo/Readme.md#%EF%B8%8F-license)
 
 Welcome to the **PDF PowerTool Suite**! This Spring Boot application is your comprehensive solution for a wide array of PDF manipulations, including dynamic generation, advanced OCR with AI-driven enhancement, and robust document management features like merging, optimization, splitting, and protection. Now fully containerized with Docker Compose for easy deployment!
+
+<p align="center">
+  <img src="imgs/one.jpg" alt="Image One" width="400" height="250" style="object-fit: cover; margin: 5px;"/>
+  <img src="imgs/two.jpg" alt="Image Two" width="400" height="250" style="object-fit: cover; margin: 5px;"/>
+</p>
 
 ---
 
