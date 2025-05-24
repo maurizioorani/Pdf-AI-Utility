@@ -403,11 +403,5 @@ We're always looking to improve! Here are some features planned for future relea
 -   **Author**: Maurizio Orani
 -   **Inspiration & Core Libraries**: This project builds upon the robust capabilities of the Spring Framework, Apache PDFBox, OpenHTMLToPDF, CommonMark, Tess4J, and **LangChain4j** for advanced AI document processing.
 -   **AI Framework**: Powered by **LangChain4j** for state-of-the-art document processing, vector embeddings, and RAG capabilities.
--   **LLM Integration**: Local AI capabilities provided by **Ollama** for enhanced OCR correction and knowledge extraction.
--   **License**: This project is intended for personal use and learning. Please review individual library licenses if you plan to use components in other contexts.
-
----
-
-**🎉 LangChain4j Integration Complete!** This application now features enterprise-grade RAG capabilities for advanced document intelligence and knowledge extraction.
-
-Enjoy managing and manipulating your PDFs with cutting-edge AI assistance! 🚀
+-   **LLM Integration**: Local AI capabilities provided by **Ollama** for enhanced OCR correction. 
+This application now features enterprise-grade RAG capabilities for advanced document intelligence and knowledge extraction.
