@@ -6,7 +6,7 @@
 [![Docker Support](https://img.shields.io/badge/Docker-Fully%20Containerized-blue.svg?style=for-the-badge&logo=docker)](tool/pdfdemo/Readme.md#%EF%B8%8F-running-with-docker-compose-recommended)
 [![License](https://img.shields.io/badge/License-Personal%20Use-lightgrey.svg?style=for-the-badge)](tool/pdfdemo/Readme.md#%EF%B8%8F-license)
 
-Welcome to the **PDF PowerTool Suite**! This Spring Boot application is your comprehensive solution for a wide array of PDF manipulations, including dynamic generation, advanced OCR with AI-driven enhancement, and robust document management features like merging, optimization, splitting, and protection. Now fully containerized with Docker Compose for easy deployment!
+Discover the PDF PowerTool Suite, your all-in-one Spring Boot application for comprehensive PDF manipulation! From dynamic generation and advanced AI-driven OCR to robust document management (merging, optimization, splitting, and protection), we've got you covered. Plus, with seamless local Ollama integration, you can now effortlessly question your documents. Deploy with ease thanks to Docker Compose containerization.
 
 <p align="center">
   <img src="imgs/one.jpg" alt="Image One" width="400" height="250" style="object-fit: cover; margin: 5px;"/>
