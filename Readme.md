@@ -329,17 +329,12 @@ This project leverages a modern Java and Spring ecosystem:
 
 ## 🧠 LangChain4j Integration & RAG Capabilities
 
-### **Migration to LangChain4j Framework**
-
-This application has been fully migrated from Spring AI to **LangChain4j** for enhanced document processing and AI capabilities. The integration provides:
-
 #### **📚 Advanced Document Processing**
 - **Intelligent Chunking**: Documents are automatically split into optimal chunks using LangChain4j's document splitters
 - **Vector Embeddings**: Generate high-quality embeddings using Ollama models through LangChain4j APIs
 - **Database Storage**: PostgreSQL-based vector storage with efficient indexing and retrieval
 
 #### **🔍 Semantic Search & RAG**
-- **Similarity Search**: Custom cosine similarity calculations for finding relevant document chunks
 - **Context Retrieval**: Intelligent context gathering for enhanced LLM responses
 - **RAG Pipeline**: Complete Retrieval Augmented Generation workflow for knowledge-based queries
 
