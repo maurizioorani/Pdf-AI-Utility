@@ -112,7 +112,7 @@
                 <h2>Upload New Document to Knowledge Base</h2>
             </div>
             <div class="card-body">
-                <form method="POST" th:action="@{/extract/process}" enctype="multipart/form-data" id="uploadDocForm">
+                <form method="POST" th:action="@{/rag/process}" enctype="multipart/form-data" id="uploadDocForm"> <!-- Changed action to /rag/process -->
                     <div class="mb-3">
                         <label for="pdfFile" class="form-label">Select PDF File:</label>
                         <input type="file" class="form-control" id="pdfFile" name="pdfFile" accept=".pdf" required />
@@ -143,8 +143,8 @@
                 <div class="d-flex justify-content-between align-items-center">
                     <h3><i class="fas fa-database"></i> Documents in Knowledge Base</h3>
                     <form th:if="${availableDocuments != null and not #lists.isEmpty(availableDocuments)}"
-                          th:action="@{/extract/documents/delete-all}" method="POST"
-                          onsubmit="return confirm('Are you sure you want to delete ALL documents from the knowledge base? This action cannot be undone.');">
+                          th:action="@{/rag/documents/delete-all}" method="POST"
+                          onsubmit="return confirm('Are you sure you want to delete ALL documents from the knowledge base for the current session? This action cannot be undone.');">
                         <button type="submit" class="btn btn-danger btn-sm">Delete All Documents</button>
                     </form>
                 </div>
@@ -165,11 +165,11 @@
                             <tr th:each="docSummary : ${availableDocuments}">
                                 <td th:text="${docSummary[1]}">Filename</td> <!-- Index 1 for filename -->
                                 <td th:text="${docSummary[2]}">Chunks</td>   <!-- Index 2 for chunk count -->
-                                <td th:text="${docSummary[3] != null ? #temporals.format(docSummary[3], 'yyyy-MM-dd HH:mm:ss') : 'N/A'}">Date</td> <!-- Index 3 for date -->
+                                <td th:text="${docSummary[3] != null ? #temporals.format(docSummary[3], 'yyyy-MM-dd HH:mm:ss') : 'N/A'}">Date</td>
                                 <td>
-                                    <form th:action="@{'/extract/documents/delete/' + ${docSummary[0]}}" method="POST" class="d-inline"
-                                          onsubmit="return confirm('Are you sure you want to delete this document and all its chunks?');">
-                                        <input type="hidden" name="documentId" th:value="${docSummary[0]}" /> <!-- docSummary[0] is documentId -->
+                                    <form th:action="@{'/rag/documents/delete/' + ${docSummary[0]}}" method="POST" class="d-inline"
+                                          onsubmit="return confirm('Are you sure you want to delete this document? This action cannot be undone for the current session.');">
+                                        <input type="hidden" name="documentId" th:value="${docSummary[0]}" />
                                         <button type="submit" class="btn btn-warning btn-sm">Delete</button>
                                     </form>
                                 </td>
@@ -258,7 +258,7 @@
                         formData.append('modelName', modelName);
                     }
                     
-                    fetch('/extract/ask', {
+                    fetch('/rag/ask', { // Changed path to /rag/ask
                         method: 'POST',
                         body: formData
                     })
@@ -344,7 +344,7 @@
                 if (!extractionProcessingModal) return; // Ensure modal exists
 
                 extractionPollInterval = setInterval(function() {
-                    fetch(`/extract/progress/${currentTaskId}`)
+                    fetch(`/rag/progress/${currentTaskId}`) // Changed path to /rag
                         .then(response => {
                             if (!response.ok) {
                                 throw new Error(`HTTP error! Status: ${response.status}`);
@@ -375,7 +375,8 @@
                                 }
                                 setTimeout(() => {
                                     extractionProcessingModal.hide();
-                                    window.location.href = '/extract?completedTaskId=' + currentTaskId;
+                                    // Redirect to /rag to refresh the page and document list, without taskId
+                                    window.location.href = '/rag';
                                 }, 2000);
                             }
                         })

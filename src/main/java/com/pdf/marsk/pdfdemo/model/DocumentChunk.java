@@ -69,7 +69,7 @@ public class DocumentChunk {
     // Transient fields for RAG functionality (not persisted)
     @Transient
     private Double similarityScore;
-    
+
     @Transient
     private Map<String, Object> metadata;
     
@@ -103,10 +103,6 @@ public class DocumentChunk {
     
     public void setEmbedding(List<Double> embedding) {
         this.embedding = embedding;
-    }
-    
-    public void setSimilarityScore(Double similarityScore) {
-        this.similarityScore = similarityScore;
     }
     
     public void setMetadata(Map<String, Object> metadata) {

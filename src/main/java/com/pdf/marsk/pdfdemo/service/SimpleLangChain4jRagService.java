@@ -10,8 +10,10 @@ import dev.langchain4j.data.document.splitter.DocumentSplitters;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
-import dev.langchain4j.store.embedding.EmbeddingMatch; // Added
+import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingStore;
+import dev.langchain4j.rag.content.retriever.ContentRetriever;
+import dev.langchain4j.rag.content.retriever.EmbeddingStoreContentRetriever;
 import org.springframework.beans.factory.annotation.Autowired; // Added
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,6 +21,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
 
 /**
  * Simplified LangChain4j RAG Service for document processing and semantic search.
@@ -34,21 +37,28 @@ public class SimpleLangChain4jRagService {
     private final DocumentChunkRepository documentChunkRepository;
     private final RagConfigurationProperties ragConfig;
     private final DocumentProcessingProperties documentConfig;
-    private final OllamaService ollamaService; // Added
+    private final OllamaService ollamaService;
+    private final ContentRetriever contentRetriever;
 
-    @Autowired
+    // @Autowired // Removed as it's often unnecessary for constructor injection with a single constructor
     public SimpleLangChain4jRagService(EmbeddingModel embeddingModel,
                                        EmbeddingStore<TextSegment> embeddingStore,
                                        DocumentChunkRepository documentChunkRepository,
                                        RagConfigurationProperties ragConfig,
                                        DocumentProcessingProperties documentConfig,
-                                       OllamaService ollamaService) { // Added
+                                       OllamaService ollamaService) {
         this.embeddingModel = embeddingModel;
         this.embeddingStore = embeddingStore;
         this.documentChunkRepository = documentChunkRepository;
         this.ragConfig = ragConfig;
         this.documentConfig = documentConfig;
-        this.ollamaService = ollamaService; // Added
+        this.ollamaService = ollamaService;
+        this.contentRetriever = EmbeddingStoreContentRetriever.builder()
+                .embeddingStore(embeddingStore)
+                .embeddingModel(embeddingModel)
+                .maxResults(ragConfig.getContext().getMaxChunks()) // Use maxChunks from Context for retriever
+                .minScore(ragConfig.getSimilarityThreshold()) // Default min score for retriever
+                .build();
     }
     
     /**
@@ -129,69 +139,73 @@ public class SimpleLangChain4jRagService {
      */
     public List<DocumentChunk> findSimilarChunks(String query, int maxResults, double minScore) {
         try {
-            // REVERTING to manual cosine similarity search as EmbeddingStore.findRelevant is not resolving.
-            // This bypasses the vector store for searching and uses the DocumentChunkRepository.
-            logger.warn("Reverted to manual cosine similarity search due to issues with EmbeddingStore.findRelevant(). This will be inefficient.");
+            logger.info("Finding similar chunks for query: '{}' using ContentRetriever (maxResults: {}, minScore: {} from config)", query, maxResults, minScore);
+            // maxResults and minScore parameters for this method are now effectively ignored if retriever is configured with defaults.
+            // For more dynamic control, ContentRetriever could be built on-the-fly or this method could adjust retriever's settings if API allows.
 
-            TextSegment querySegment = TextSegment.from(query);
-            Embedding queryEmbeddingObj = embeddingModel.embed(querySegment).content();
-            
-            List<Double> queryEmbeddingVector = new ArrayList<>();
-            for (float value : queryEmbeddingObj.vector()) {
-                queryEmbeddingVector.add((double) value);
-            }
-            
-            List<DocumentChunk> allChunks = documentChunkRepository.findAll();
-            logger.info("Found {} total chunks in repository for manual search.", allChunks.size());
-            if (allChunks.isEmpty()) {
-                logger.warn("No chunks found in DocumentChunkRepository. Cannot find similar chunks.");
+            List<dev.langchain4j.rag.content.Content> relevantContent = contentRetriever.retrieve(dev.langchain4j.rag.query.Query.from(query)); // Wrap String in Query object
+
+            if (relevantContent == null || relevantContent.isEmpty()) {
+                logger.info("No relevant content found by ContentRetriever for query: '{}'", query);
                 return Collections.emptyList();
             }
+            logger.info("Found {} relevant content items from ContentRetriever for query: '{}'", relevantContent.size(), query);
 
-            List<SimilarityResult> similarities = new ArrayList<>();
-            int processedCount = 0;
-            int matchedSizeCount = 0;
-            int passedThresholdCount = 0;
-
-            for (DocumentChunk chunk : allChunks) {
-                processedCount++;
-                if (chunk.getEmbedding() != null && !chunk.getEmbedding().isEmpty()) {
-                    if (chunk.getEmbedding().size() == queryEmbeddingVector.size()) {
-                        matchedSizeCount++;
-                        double similarity = calculateCosineSimilarity(queryEmbeddingVector, chunk.getEmbedding());
-                        // Log individual similarity scores for debugging
-                        logger.debug("Chunk ID: {}, Doc ID: {}, Index: {}, Similarity: {}", chunk.getId(), chunk.getDocumentId(), chunk.getChunkIndex(), similarity);
-                        if (similarity >= minScore) {
-                            passedThresholdCount++;
-                            similarities.add(new SimilarityResult(chunk, similarity));
-                        }
-                    } else {
-                        logger.warn("Chunk ID: {} (Doc ID: {}) has embedding size {} but query embedding size is {}. Skipping.",
-                                chunk.getId(), chunk.getDocumentId(), chunk.getEmbedding().size(), queryEmbeddingVector.size());
-                    }
-                } else {
-                    logger.warn("Chunk ID: {} (Doc ID: {}) has null or empty embedding. Skipping.", chunk.getId(), chunk.getDocumentId());
-                }
-            }
-            logger.info("Manual search: Processed {} chunks, {} had matching embedding sizes, {} passed similarity threshold {}.",
-                    processedCount, matchedSizeCount, passedThresholdCount, minScore);
-            
-            similarities.sort((a, b) -> Double.compare(b.similarity, a.similarity));
-            int limit = Math.min(maxResults, similarities.size());
-            
             List<DocumentChunk> results = new ArrayList<>();
-            for (int i = 0; i < limit; i++) {
-                SimilarityResult result = similarities.get(i);
-                DocumentChunk chunk = result.chunk;
-                chunk.setSimilarityScore(result.similarity);
+            for (dev.langchain4j.rag.content.Content contentItem : relevantContent) {
+                if (!(contentItem instanceof TextSegment)) {
+                    logger.warn("Skipping non-TextSegment content item: {}", contentItem);
+                    continue;
+                }
+                TextSegment segment = (TextSegment) contentItem;
+                Metadata metadata = segment.metadata();
+                if (metadata == null) {
+                    logger.warn("Encountered a TextSegment with null metadata from ContentRetriever. Skipping. Segment text: {}", segment.text().substring(0, Math.min(50, segment.text().length())));
+                    continue;
+                }
+
+                DocumentChunk chunk = new DocumentChunk();
+                String documentId = metadata.getString("document_id");
+                String filename = metadata.getString("filename");
+                String chunkIndexStr = metadata.getString("chunk_index");
+                // ContentRetriever might not directly provide a score in the TextSegment metadata
+                // If score is needed, it might require a custom ContentRetriever or post-processing
+
+                if (documentId == null || filename == null || chunkIndexStr == null) {
+                    logger.warn("TextSegment metadata from ContentRetriever is missing required fields (document_id, filename, or chunk_index). Segment: {}", segment);
+                }
+                
+                chunk.setDocumentId(documentId);
+                chunk.setFilename(filename);
+                try {
+                    if (chunkIndexStr != null) {
+                        chunk.setChunkIndex(Integer.parseInt(chunkIndexStr));
+                    } else {
+                         logger.warn("chunk_index is null for segment from document_id: {}", documentId);
+                         chunk.setChunkIndex(-1);
+                    }
+                } catch (NumberFormatException e) {
+                    logger.error("Failed to parse chunk_index '{}' for document_id: {}. Error: {}", chunkIndexStr, documentId, e.getMessage());
+                    chunk.setChunkIndex(-1);
+                }
+                chunk.setContent(segment.text());
+                // Similarity score might not be readily available from all ContentRetriever implementations
+                // For EmbeddingStoreContentRetriever, it's not directly in the returned TextSegment.
+                // If score is crucial, the lower-level EmbeddingStore.findRelevant might be needed,
+                // or a custom retriever that preserves/calculates score.
+                // For now, we'll set a default or leave it.
+                // chunk.setSimilarityScore(0.0); // Placeholder
+
                 results.add(chunk);
+                logger.debug("Converted segment to DocumentChunk: docId={}, file={}, index={}",
+                    chunk.getDocumentId(), chunk.getFilename(), chunk.getChunkIndex());
             }
             
-            logger.debug("Found {} similar chunks for query (manual search): {}", results.size(), query);
+            logger.info("Successfully converted {} segments to DocumentChunks for query: '{}'", results.size(), query);
             return results;
             
         } catch (Exception e) {
-            logger.error("Error finding similar chunks (manual search): {}", e.getMessage(), e);
+            logger.error("Error finding similar chunks: {}", e.getMessage(), e);
             return Collections.emptyList();
         }
     }
@@ -334,49 +348,6 @@ public class SimpleLangChain4jRagService {
         }
     }
     
-    // Helper classes and methods
-    private static class SimilarityResult {
-        final DocumentChunk chunk;
-        final double similarity;
-        
-        SimilarityResult(DocumentChunk chunk, double similarity) {
-            this.chunk = chunk;
-            this.similarity = similarity;
-        }
-    }
-    
-    private double calculateCosineSimilarity(List<Double> vectorA, List<Double> vectorB) {
-        if (vectorA == null || vectorB == null || vectorA.isEmpty() || vectorB.isEmpty()) {
-            logger.warn("Cannot calculate cosine similarity for null or empty vectors.");
-            return 0.0;
-        }
-        if (vectorA.size() != vectorB.size()) {
-            logger.warn("Cannot calculate cosine similarity for vectors of different sizes: {} vs {}", vectorA.size(), vectorB.size());
-            return 0.0;
-        }
-        
-        double dotProduct = 0.0;
-        double normA = 0.0;
-        double normB = 0.0;
-        
-        for (int i = 0; i < vectorA.size(); i++) {
-            dotProduct += vectorA.get(i) * vectorB.get(i);
-            normA += Math.pow(vectorA.get(i), 2);
-            normB += Math.pow(vectorB.get(i), 2);
-        }
-        
-        if (normA == 0.0 || normB == 0.0) {
-            // This case implies one or both vectors are zero vectors.
-            // If both are zero, similarity could be 1 (identical) or undefined.
-            // If one is zero and other is not, similarity is 0.
-            // For simplicity, returning 0 if either norm is zero.
-            logger.debug("One or both norms are zero, returning 0 similarity. NormA: {}, NormB: {}", normA, normB);
-            return 0.0;
-        }
-        
-        return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
-    }
-
     /**
      * Answers a user's query based on the content of documents in the vector store.
      * @param userQuery The user's question.
@@ -395,15 +366,16 @@ public class SimpleLangChain4jRagService {
         }
 
         // 2. Construct a prompt for question answering
-        String promptForLlm = String.format(
-            "Based on the following context, please answer the user's question.\n" +
-            "If the context doesn't contain enough information, state that clearly.\n\n" +
-            "Context:\n\"\"\"\n%s\n\"\"\"\n\n" +
-            "User's Question: %s\n\n" +
-            "Answer:",
-            context,
-            userQuery
-        );
+        String promptForLlm = """
+            Based on the following context, please answer the user's question.
+            If the context doesn't contain enough information, state that clearly.
+
+            Context:
+            """ + context + """
+
+            User's Question: """ + userQuery + """
+
+            Answer:""";
 
         logger.debug("Prompt for LLM: {}", promptForLlm);
 

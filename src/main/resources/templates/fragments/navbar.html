@@ -1,8 +1,5 @@
-<!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org" lang="en">
-<body>
-    <!-- Navigation Fragment -->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-primary" th:fragment="page-navbar (activePage)">
+<!-- Navigation Fragment -->
+<nav class="navbar navbar-expand-lg navbar-dark bg-primary" th:fragment="page-navbar (activePage)" xmlns:th="http://www.thymeleaf.org">
         <div class="container">
             <a class="navbar-brand" th:href="@{/}">PDF Utility</a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
@@ -35,7 +32,7 @@
                         <a class="nav-link" th:classappend="${activePage == 'protect' ? 'active' : ''}" th:href="@{/protect}">Protect PDF</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" th:classappend="${activePage == 'extract' ? 'active' : ''}" th:href="@{/extract}">Knowledge Extractor</a>
+                        <a class="nav-link" th:classappend="${activePage == 'rag' ? 'active' : ''}" th:href="@{/rag}">Knowledge Extractor (RAG)</a>
                     </li>
                     <li class="nav-item" th:if="${activePage == 'simple-generate'}"> <!-- Only show if on simple_generate page -->
                         <a class="nav-link active" aria-current="page" th:href="@{/simple-generate}">Simple Generate</a>
@@ -45,5 +42,3 @@
             </div>
         </div>
     </nav>
-</body>
-</html>
