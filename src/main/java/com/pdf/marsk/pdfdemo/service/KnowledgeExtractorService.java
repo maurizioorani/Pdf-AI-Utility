@@ -265,7 +265,9 @@ public class KnowledgeExtractorService { // Renamed from Easy_RAG_Example
         // Explicitly provide EmbeddingModel to the retriever
         ContentRetriever retriever = EmbeddingStoreContentRetriever.builder()
                 .embeddingStore(embeddingStore)
-                .embeddingModel(this.embeddingModel) // Use injected embedding model
+                .embeddingModel(this.embeddingModel)
+                .maxResults(5) // Retrieve more segments for potentially better summarization context
+              //.minScore(0.6) // Optionally, set a minimum score to filter less relevant segments
                 .build();
         logger.info("Content retriever created from in-memory embedding store.");
         return retriever;
