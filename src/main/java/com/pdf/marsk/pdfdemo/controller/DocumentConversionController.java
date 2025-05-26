@@ -44,8 +44,12 @@ public class DocumentConversionController {
 
     private static final Logger logger = LoggerFactory.getLogger(DocumentConversionController.class);
 
+    private final HtmlTemplateRepository htmlTemplateRepository;
+
     @Autowired
-    private HtmlTemplateRepository htmlTemplateRepository;
+    public DocumentConversionController(HtmlTemplateRepository htmlTemplateRepository) {
+        this.htmlTemplateRepository = htmlTemplateRepository;
+    }
 
     // --- Home Page (from PdfController) ---
     @GetMapping
@@ -85,27 +89,14 @@ public class DocumentConversionController {
         }
 
         String originalFilename = file.getOriginalFilename();
-        if (originalFilename == null || originalFilename.trim().isEmpty() ||
-            !(originalFilename.toLowerCase().endsWith(".html") ||
-              originalFilename.toLowerCase().endsWith(".htm") ||
-              originalFilename.toLowerCase().endsWith(".md"))) {
-            redirectAttributes.addFlashAttribute("error", "Invalid file type or name. Please upload an HTML or Markdown file.");
-            logger.warn("File save attempt with invalid filename or type: {}", originalFilename);
+        if (!isValidUploadCandidate(originalFilename, redirectAttributes)) {
             return "redirect:/upload-convert";
         }
 
         try {
-            byte[] fileContentBytes = file.getBytes();
-            String fileContentString = new String(fileContentBytes, StandardCharsets.UTF_8);
-
-            HtmlTemplate newTemplate = new HtmlTemplate();
-            newTemplate.setName(originalFilename);
-            newTemplate.setHtmlContent(fileContentString); // Content is stored as is, type inferred from name at conversion
-
-            htmlTemplateRepository.save(newTemplate);
+            saveFileContent(file, originalFilename);
             logger.info("Successfully saved uploaded file: {}", originalFilename);
             redirectAttributes.addFlashAttribute("message", "File '" + originalFilename + "' saved successfully.");
-
         } catch (IOException e) {
             logger.error("IOException during file saving for: " + originalFilename, e);
             redirectAttributes.addFlashAttribute("error", "Failed to save file due to an IO error: " + e.getMessage());
@@ -114,6 +105,28 @@ public class DocumentConversionController {
             redirectAttributes.addFlashAttribute("error", "An unexpected error occurred during file saving: " + e.getMessage());
         }
         return "redirect:/upload-convert";
+    }
+
+    private boolean isValidUploadCandidate(String originalFilename, RedirectAttributes redirectAttributes) {
+        if (originalFilename == null || originalFilename.trim().isEmpty() ||
+            !(originalFilename.toLowerCase().endsWith(".html") ||
+              originalFilename.toLowerCase().endsWith(".htm") ||
+              originalFilename.toLowerCase().endsWith(".md"))) {
+            redirectAttributes.addFlashAttribute("error", "Invalid file type or name. Please upload an HTML or Markdown file.");
+            logger.warn("File save attempt with invalid filename or type: {}", originalFilename);
+            return false;
+        }
+        return true;
+    }
+
+    private void saveFileContent(MultipartFile file, String originalFilename) throws IOException {
+        byte[] fileContentBytes = file.getBytes();
+        String fileContentString = new String(fileContentBytes, StandardCharsets.UTF_8);
+
+        HtmlTemplate newTemplate = new HtmlTemplate();
+        newTemplate.setName(originalFilename);
+        newTemplate.setHtmlContent(fileContentString);
+        htmlTemplateRepository.save(newTemplate);
     }
 
     // --- Template Management (from PdfController) ---

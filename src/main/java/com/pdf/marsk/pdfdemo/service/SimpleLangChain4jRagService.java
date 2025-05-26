@@ -10,18 +10,15 @@ import dev.langchain4j.data.document.splitter.DocumentSplitters;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
-import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.rag.content.retriever.EmbeddingStoreContentRetriever;
-import org.springframework.beans.factory.annotation.Autowired; // Added
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
-import java.util.stream.Collectors;
 
 /**
  * Simplified LangChain4j RAG Service for document processing and semantic search.
@@ -40,7 +37,6 @@ public class SimpleLangChain4jRagService {
     private final OllamaService ollamaService;
     private final ContentRetriever contentRetriever;
 
-    // @Autowired // Removed as it's often unnecessary for constructor injection with a single constructor
     public SimpleLangChain4jRagService(EmbeddingModel embeddingModel,
                                        EmbeddingStore<TextSegment> embeddingStore,
                                        DocumentChunkRepository documentChunkRepository,
@@ -218,7 +214,7 @@ public class SimpleLangChain4jRagService {
             // Get a representative chunk from the document
             List<DocumentChunk> documentChunks = documentChunkRepository.findByDocumentId(documentId);
             if (documentChunks.isEmpty()) {
-                return new ArrayList<>();
+                return Collections.emptyList();
             }
             
             // Use the first chunk's content for similarity search
@@ -227,7 +223,7 @@ public class SimpleLangChain4jRagService {
             
         } catch (Exception e) {
             logger.error("Error finding similar documents for ID {}: {}", documentId, e.getMessage(), e);
-            return new ArrayList<>();
+            return Collections.emptyList();
         }
     }
     
