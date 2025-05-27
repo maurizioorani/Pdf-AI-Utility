@@ -35,25 +35,26 @@
                 <form method="POST" th:action="@{/split}" enctype="multipart/form-data">
                     <div class="mb-3">
                         <label for="pdfFile" class="form-label">Select PDF File:</label>
-                        <input type="file" class="form-control" id="pdfFile" name="pdfFile" accept=".pdf" required />
+                        <div class="input-group">
+                            <input type="file" class="form-control" id="pdfFile" name="pdfFile" accept=".pdf" required />
+                            <button class="btn btn-outline-secondary" type="button" id="getPageCountBtn">Get Page Count</button>
+                        </div>
+                        <div id="pageCountResult" class="form-text mt-1"></div>
                     </div>
                     
                     <div class="mb-3">
                         <label for="splitOption" class="form-label">Split Option:</label>
                         <select class="form-select" id="splitOption" name="splitOption">
                             <option value="every_page" selected>Split every page into a separate PDF</option>
-                            <!-- Add more options later e.g., by range -->
+                            <option value="custom_range">Split by custom page range(s)</option>
                         </select>
                     </div>
-
-                    <!-- Placeholder for page range input, initially hidden -->
-                    <!--
-                    <div class="mb-3" id="pageRangeInput" style="display: none;">
+ 
+                    <div class="mb-3" id="pageRangeInputContainer" style="display: none;">
                         <label for="pageRanges" class="form-label">Page Ranges (e.g., 1-3, 5, 7-9):</label>
                         <input type="text" class="form-control" id="pageRanges" name="pageRanges" placeholder="e.g., 1-3, 5, 7-9">
-                        <div class="form-text">Specify single pages or ranges separated by commas.</div>
+                        <div class="form-text">Specify single pages (e.g., 5), ranges (e.g., 1-3), or a combination (e.g., 1-3, 5, 7-9). Pages are 1-indexed.</div>
                     </div>
-                    -->
                     
                     <button type="submit" class="btn btn-primary">Split PDF</button>
                 </form>
@@ -64,22 +65,86 @@
             <a href="/" class="btn btn-outline-secondary">Back to Home</a>
         </div>
     </div>
-
+ 
     <div th:replace="~{fragments/footer :: page-footer}"></div>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <!--
-    <script>
-        document.getElementById('splitOption').addEventListener('change', function() {
-            var pageRangeInput = document.getElementById('pageRangeInput');
-            if (this.value === 'custom_range') {
-                pageRangeInput.style.display = 'block';
-                document.getElementById('pageRanges').required = true;
-            } else {
-                pageRangeInput.style.display = 'none';
-                document.getElementById('pageRanges').required = false;
+    <script th:inline="javascript">
+        /*<![CDATA[*/
+        const csrfToken = document.querySelector('meta[name="_csrf"]') ? document.querySelector('meta[name="_csrf"]').getAttribute('content') : null;
+        const csrfHeaderName = document.querySelector('meta[name="_csrf_header"]') ? document.querySelector('meta[name="_csrf_header"]').getAttribute('content') : null;
+        const getPageCountUrl = /*[[@{/split/get-page-count}]]*/ '/split/get-page-count';
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const splitOptionSelect = document.getElementById('splitOption');
+            const pageRangeInputContainer = document.getElementById('pageRangeInputContainer');
+            const pageRangesInput = document.getElementById('pageRanges');
+            const getPageCountBtn = document.getElementById('getPageCountBtn');
+            const pdfFileInput = document.getElementById('pdfFile');
+            const pageCountResultDiv = document.getElementById('pageCountResult');
+
+            function togglePageRangeInput() {
+                if (splitOptionSelect.value === 'custom_range') {
+                    pageRangeInputContainer.style.display = 'block';
+                    pageRangesInput.required = true;
+                } else {
+                    pageRangeInputContainer.style.display = 'none';
+                    pageRangesInput.required = false;
+                }
             }
+
+            splitOptionSelect.addEventListener('change', togglePageRangeInput);
+            // Initialize on page load
+            togglePageRangeInput();
+
+            getPageCountBtn.addEventListener('click', function() {
+                const file = pdfFileInput.files[0];
+                if (!file) {
+                    pageCountResultDiv.textContent = 'Please select a PDF file first.';
+                    pageCountResultDiv.className = 'form-text mt-1 text-danger';
+                    return;
+                }
+
+                pageCountResultDiv.textContent = 'Processing...';
+                pageCountResultDiv.className = 'form-text mt-1 text-muted';
+
+                const formData = new FormData();
+                formData.append('pdfFile', file);
+
+                const fetchOptions = {
+                    method: 'POST',
+                    body: formData,
+                    headers: {}
+                };
+
+                if (csrfToken && csrfHeaderName) {
+                    fetchOptions.headers[csrfHeaderName] = csrfToken;
+                }
+
+
+                fetch(getPageCountUrl, fetchOptions)
+                .then(response => {
+                    if (!response.ok) {
+                        return response.json().then(err => { throw new Error(err.error || `HTTP error! status: ${response.status}`)});
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.pageCount !== undefined) {
+                        pageCountResultDiv.textContent = `Total pages in document: ${data.pageCount}`;
+                        pageCountResultDiv.className = 'form-text mt-1 text-success';
+                    } else if (data.error) {
+                        pageCountResultDiv.textContent = `Error: ${data.error}`;
+                        pageCountResultDiv.className = 'form-text mt-1 text-danger';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching page count:', error);
+                    pageCountResultDiv.textContent = `Error: ${error.message || 'Could not retrieve page count.'}`;
+                    pageCountResultDiv.className = 'form-text mt-1 text-danger';
+                });
+            });
         });
+        /*]]>*/
     </script>
-    -->
 </body>
 </html>

@@ -21,30 +21,45 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
-
+import java.util.Map;
+ 
 @Controller
 @RequestMapping("/split")
 public class PdfSplitController {
-
+ 
     private static final Logger logger = LoggerFactory.getLogger(PdfSplitController.class);
     private final PdfSplitService pdfSplitService;
-
+ 
     @Autowired
     public PdfSplitController(PdfSplitService pdfSplitService) {
         this.pdfSplitService = pdfSplitService;
     }
-
+ 
     @GetMapping
     public String splitPage(Model model) {
         return "split";
     }
-
+ 
+    @PostMapping("/get-page-count")
+    public ResponseEntity<?> getPageCount(@RequestParam("pdfFile") MultipartFile pdfFile) {
+        if (pdfFile.isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Please select a PDF file."));
+        }
+        try {
+            int pageCount = pdfSplitService.getPdfPageCount(pdfFile.getInputStream());
+            return ResponseEntity.ok(Map.of("pageCount", pageCount));
+        } catch (IOException e) {
+            logger.error("Error reading PDF file for page count: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("error", "Error processing PDF file."));
+        }
+    }
+ 
     @PostMapping
     public Object handlePdfSplit(@RequestParam("pdfFile") MultipartFile pdfFile,
                                  @RequestParam("splitOption") String splitOption,
-                                 // @RequestParam(name = "pageRanges", required = false) String pageRanges, // For future use
+                                 @RequestParam(name = "pageRanges", required = false) String pageRanges,
                                  RedirectAttributes redirectAttributes) {
-
+ 
         if (pdfFile.isEmpty()) {
             redirectAttributes.addFlashAttribute("errorMessage", "Please select a PDF file to split.");
             return "redirect:/split";
@@ -71,17 +86,25 @@ public class PdfSplitController {
                 resultBytes = pdfSplitService.splitPdfEveryPage(pdfFile, baseName);
                 downloadFilename = baseName + "_pages.zip";
                 logger.info("PDF {} split into individual pages, packaged as {}", originalFileName, downloadFilename);
-            } 
-            // else if ("custom_range".equals(splitOption)) {
-            //     // Implement custom range splitting here if needed
-            //     redirectAttributes.addFlashAttribute("errorMessage", "Custom range splitting is not yet implemented.");
-            //     return "redirect:/split";
-            // } 
+            } else if ("custom_range".equals(splitOption)) {
+                if (pageRanges == null || pageRanges.trim().isEmpty()) {
+                    redirectAttributes.addFlashAttribute("errorMessage", "Page ranges are required for custom split.");
+                    return "redirect:/split";
+                }
+                resultBytes = pdfSplitService.splitPdfByRanges(pdfFile, pageRanges, baseName);
+                // Determine if the result is a single PDF or a ZIP
+                if (pageRanges.contains(",") || pageRanges.contains(";")) { // Simple check for multiple ranges or individual pages
+                    downloadFilename = baseName + "_custom_pages.zip";
+                } else {
+                    downloadFilename = baseName + "_range_" + pageRanges.replaceAll("[^a-zA-Z0-9_\\-]", "") + ".pdf";
+                }
+                logger.info("PDF {} split by custom range '{}', packaged as {}", originalFileName, pageRanges, downloadFilename);
+            }
             else {
                 redirectAttributes.addFlashAttribute("errorMessage", "Invalid split option selected.");
                 return "redirect:/split";
             }
-
+ 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_OCTET_STREAM); // For ZIP file
             headers.setContentDisposition(ContentDisposition.attachment().filename(downloadFilename).build());
