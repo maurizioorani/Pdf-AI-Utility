@@ -11,11 +11,13 @@ public class DocumentProcessingProperties {
     private final int chunkSize;
     private final int chunkOverlap;
     private final int maxParallelJobs;
+    // private final String splitOutputDirectory; // Removed
     
-    public DocumentProcessingProperties(int chunkSize, int chunkOverlap, int maxParallelJobs) {
+    public DocumentProcessingProperties(int chunkSize, int chunkOverlap, int maxParallelJobs /*, String splitOutputDirectory removed */) {
         this.chunkSize = chunkSize > 0 ? chunkSize : 1000;
         this.chunkOverlap = chunkOverlap >= 0 ? chunkOverlap : 200;
         this.maxParallelJobs = maxParallelJobs > 0 ? maxParallelJobs : 4;
+        // this.splitOutputDirectory = (splitOutputDirectory != null && !splitOutputDirectory.isEmpty()) ? splitOutputDirectory : "pdf_split_output"; // Removed
     }
     
     public int getChunkSize() {
@@ -29,4 +31,8 @@ public class DocumentProcessingProperties {
     public int getMaxParallelJobs() {
         return maxParallelJobs;
     }
+ 
+    // public String getSplitOutputDirectory() { // Removed
+    //     return splitOutputDirectory;
+    // }
 }

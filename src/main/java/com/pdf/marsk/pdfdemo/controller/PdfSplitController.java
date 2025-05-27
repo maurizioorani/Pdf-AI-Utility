@@ -4,10 +4,10 @@ import com.pdf.marsk.pdfdemo.service.PdfSplitService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.ContentDisposition; // Added import
-import org.springframework.http.HttpHeaders;
+import org.springframework.http.ContentDisposition; // Re-add for downloads
+import org.springframework.http.HttpHeaders;       // Re-add for downloads
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
+import org.springframework.http.MediaType;         // Re-add for downloads
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -58,13 +58,14 @@ public class PdfSplitController {
     public Object handlePdfSplit(@RequestParam("pdfFile") MultipartFile pdfFile,
                                  @RequestParam("splitOption") String splitOption,
                                  @RequestParam(name = "pageRanges", required = false) String pageRanges,
+                                 // @RequestParam("outputDirectory") String outputDirectory, // Removed
                                  RedirectAttributes redirectAttributes) {
  
         if (pdfFile.isEmpty()) {
             redirectAttributes.addFlashAttribute("errorMessage", "Please select a PDF file to split.");
-            return "redirect:/split";
+            return "redirect:/split"; // Return type is String for redirect
         }
-
+ 
         long fileSize = pdfFile.getSize();
         long maxFileSize = 200 * 1024 * 1024; // 200 MB
         if (fileSize > maxFileSize) {
@@ -72,19 +73,22 @@ public class PdfSplitController {
                 String.format("File size (%.2f MB) exceeds the maximum limit of 200 MB.", fileSize / (1024.0 * 1024.0)));
             return "redirect:/split";
         }
-
+ 
         String originalFileName = pdfFile.getOriginalFilename();
         String baseName = originalFileName != null ? originalFileName.substring(0, originalFileName.lastIndexOf('.')) : "split_pdf";
         baseName = baseName.replaceAll("[^a-zA-Z0-9.\\-_]", "_");
 
-
+        // Removed outputDirectory checks
+ 
         try {
             byte[] resultBytes;
             String downloadFilename;
-
+            MediaType contentType;
+ 
             if ("every_page".equals(splitOption)) {
                 resultBytes = pdfSplitService.splitPdfEveryPage(pdfFile, baseName);
                 downloadFilename = baseName + "_pages.zip";
+                contentType = MediaType.APPLICATION_OCTET_STREAM; // For ZIP
                 logger.info("PDF {} split into individual pages, packaged as {}", originalFileName, downloadFilename);
             } else if ("custom_range".equals(splitOption)) {
                 if (pageRanges == null || pageRanges.trim().isEmpty()) {
@@ -92,26 +96,27 @@ public class PdfSplitController {
                     return "redirect:/split";
                 }
                 resultBytes = pdfSplitService.splitPdfByRanges(pdfFile, pageRanges, baseName);
-                // Determine if the result is a single PDF or a ZIP
-                if (pageRanges.contains(",") || pageRanges.contains(";")) { // Simple check for multiple ranges or individual pages
+                // Determine if the result is a single PDF or a ZIP based on ranges
+                if (pageRanges.contains(",") || pageRanges.contains(";")) {
                     downloadFilename = baseName + "_custom_pages.zip";
+                    contentType = MediaType.APPLICATION_OCTET_STREAM; // For ZIP
                 } else {
                     downloadFilename = baseName + "_range_" + pageRanges.replaceAll("[^a-zA-Z0-9_\\-]", "") + ".pdf";
+                    contentType = MediaType.APPLICATION_PDF; // For single PDF
                 }
                 logger.info("PDF {} split by custom range '{}', packaged as {}", originalFileName, pageRanges, downloadFilename);
-            }
-            else {
+            } else {
                 redirectAttributes.addFlashAttribute("errorMessage", "Invalid split option selected.");
                 return "redirect:/split";
             }
- 
+            
             HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_OCTET_STREAM); // For ZIP file
+            headers.setContentType(contentType);
             headers.setContentDisposition(ContentDisposition.attachment().filename(downloadFilename).build());
             headers.setContentLength(resultBytes.length);
 
             return new ResponseEntity<>(resultBytes, headers, HttpStatus.OK);
-
+ 
         } catch (IllegalArgumentException e) {
             logger.warn("Invalid input for PDF split: {}", e.getMessage());
             redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
