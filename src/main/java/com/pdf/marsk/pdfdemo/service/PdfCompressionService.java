@@ -86,12 +86,6 @@ public class PdfCompressionService {
 
                 if (xobject instanceof PDImageXObject) {
                     PDImageXObject imageXObject = (PDImageXObject) xobject;
-                    
-                    // Your existing skip logic is good, let's refine slightly
-                    // if ("jpg".equalsIgnoreCase(imageXObject.getSuffix()) || "jpeg".equalsIgnoreCase(imageXObject.getSuffix())) {
-                    //     logger.debug("Skipping image {} as it's already JPEG.", cosName.getName());
-                    //     continue;
-                    // }
 
                     BufferedImage originalImage = imageXObject.getImage();
                     if (originalImage == null) {
