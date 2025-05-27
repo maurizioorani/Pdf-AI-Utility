@@ -7,6 +7,7 @@ import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import com.pdf.marsk.pdfdemo.exception.OllamaConnectivityException; // Added import
 
 import java.util.ArrayList;
 import java.util.List;
@@ -104,6 +105,7 @@ public class OllamaService {
             Prompt prompt = new Prompt(userMessage);
             
             String llmResponse = chatClient.call(prompt).getResult().getOutput().getContent();
+            logger.info("RAW LLM Response for model {}: '{}'", modelName, llmResponse); // Log the raw response
             
             LlmResponseResult result = detectAndFixProblematicResponse(text, llmResponse, modelName);
             
@@ -113,8 +115,33 @@ public class OllamaService {
             return new EnhancementResult(result.getText(), result.wasFixed());
             
         } catch (Exception e) {
-            logger.error("Error enhancing OCR text with model {}: {}", modelName, e.getMessage(), e);
-            return new EnhancementResult(text, false); // Fallback to original text on error
+            // Check for common connectivity-related issues
+            String errorMessage = e.getMessage() != null ? e.getMessage().toLowerCase() : "";
+            Throwable cause = e.getCause();
+            String causeMessage = cause != null && cause.getMessage() != null ? cause.getMessage().toLowerCase() : "";
+
+            boolean isConnectivityIssue = errorMessage.contains("connection refused") ||
+                                          errorMessage.contains("failed to connect") ||
+                                          errorMessage.contains("timeout") ||
+                                          errorMessage.contains("service unavailable") ||
+                                          errorMessage.contains("network is unreachable") ||
+                                          errorMessage.contains("connection timed out") ||
+                                          causeMessage.contains("connection refused") ||
+                                          causeMessage.contains("failed to connect") ||
+                                          causeMessage.contains("timeout") ||
+                                          // Consider adding specific Spring AI or underlying HTTP client exception checks here
+                                          // e.g., e instanceof org.springframework.web.client.ResourceAccessException
+                                          // e.g., cause instanceof java.net.ConnectException
+                                          false;
+
+            if (isConnectivityIssue) {
+                logger.error("Ollama connectivity error for model {}: {}", modelName, e.getMessage()); // Log without full stack trace for this specific case initially, or adjust logging level
+                throw new OllamaConnectivityException("Failed to connect to Ollama server for model " + modelName + ". Please ensure Ollama is running and accessible. Original error: " + e.getMessage(), e);
+            } else {
+                logger.error("Error enhancing OCR text with model {}: {}", modelName, e.getMessage(), e);
+                // For other errors, maintain existing fallback behavior
+                return new EnhancementResult(text, false);
+            }
         }
     }
     
@@ -232,8 +259,29 @@ public class OllamaService {
             logger.info("Successfully received raw response from LLM model {}", modelName);
             return llmResponse;
         } catch (Exception e) {
-            logger.error("Error generating raw LLM response with model {}: {}", modelName, e.getMessage(), e);
-            return "Error: Could not get a response from the LLM."; // Fallback error message
+            // Check for common connectivity-related issues
+            String errorMessage = e.getMessage() != null ? e.getMessage().toLowerCase() : "";
+            Throwable cause = e.getCause();
+            String causeMessage = cause != null && cause.getMessage() != null ? cause.getMessage().toLowerCase() : "";
+
+            boolean isConnectivityIssue = errorMessage.contains("connection refused") ||
+                                          errorMessage.contains("failed to connect") ||
+                                          errorMessage.contains("timeout") ||
+                                          errorMessage.contains("service unavailable") ||
+                                          errorMessage.contains("network is unreachable") ||
+                                          errorMessage.contains("connection timed out") ||
+                                          causeMessage.contains("connection refused") ||
+                                          causeMessage.contains("failed to connect") ||
+                                          causeMessage.contains("timeout") ||
+                                          false;
+
+            if (isConnectivityIssue) {
+                logger.error("Ollama connectivity error during raw response generation for model {}: {}", modelName, e.getMessage());
+                throw new OllamaConnectivityException("Failed to connect to Ollama server for model " + modelName + " during raw response generation. Original error: " + e.getMessage(), e);
+            } else {
+                logger.error("Error generating raw LLM response with model {}: {}", modelName, e.getMessage(), e);
+                return "Error: Could not get a response from the LLM."; // Fallback error message
+            }
         }
     }
 
@@ -313,8 +361,9 @@ public class OllamaService {
                     commonFooter;
             default: // generic
                  return commonHeader +
-                    "\nEXAMPLE:\nINPUT TEXT (below 'TEXT TO CORRECT:'): \"Thc qu1ck brOwn f0x jumpS ov3r the l@zy dog. It was a br1ght day.\"\n" +
-                    "CORRECTED OUTPUT (your entire response): \"The quick brown fox jumps over the lazy dog. It was a bright day.\"\n" +
+                    "\nEXAMPLE OF RESPONSE FORMATTING (DO NOT USE THIS ACTUAL TEXT IN YOUR CORRECTION):\n" +
+                    "INPUT TEXT (below 'TEXT TO CORRECT:'): \"Th1s is an exampl of tExt w1th err0rs.\"\n" +
+                    "CORRECTED OUTPUT (your entire response): \"This is an example of text with errors.\"\n" +
                     "\nTEXT TO CORRECT:\n```\n" + text + "\n```" + commonFooter;
         }
     }
@@ -421,10 +470,11 @@ public class OllamaService {
                 UserMessage fixUserMessage = new UserMessage(fixPromptText);
                 Prompt fixSystemPrompt = new Prompt(fixUserMessage);
                 String fixedResponse = chatClient.call(fixSystemPrompt).getResult().getOutput().getContent();
+                logger.info("RAW LLM Response to FIX ATTEMPT for model {}: '{}'", modelName, fixedResponse); // Log the raw response to the fix prompt
                 
                 String finalFixedResponse = fixedResponse.replaceAll("^\\s*`{0,3}\\s*", "").replaceAll("\\s*`{0,3}\\s*$", "").trim();
 
-                logger.info("Successfully attempted to fix problematic LLM response for model {}. Original problematic: '{}', Fixed attempt: '{}'", modelName, currentResponse, finalFixedResponse);
+                logger.info("Successfully attempted to fix problematic LLM response for model {}. Original problematic: '{}', Cleaned fixed attempt: '{}'", modelName, currentResponse, finalFixedResponse);
                 // Even the fixed response might have a preamble if the LLM is stubborn
                 finalFixedResponse = finalFixedResponse.replaceAll("(?i)^CORRECTED OUTPUT:\\s*\\n?", "").trim();
                 return new LlmResponseResult(finalFixedResponse, true);

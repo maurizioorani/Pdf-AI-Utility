@@ -61,10 +61,10 @@ public class OcrService {
             tesseractInstance.setLanguage("eng"); // Default to English, can be made configurable
             
             // Add additional options to improve PDF processing
-            tesseractInstance.setPageSegMode(1); // Automatic page segmentation with OSD
+            tesseractInstance.setPageSegMode(3); // PSM_AUTO - Fully automatic page segmentation, but no OSD.
             tesseractInstance.setOcrEngineMode(1); // Neural net based LSTM engine only
             
-            logger.info("Initialized Tesseract OCR service");
+            logger.info("Initialized Tesseract OCR service with PSM_AUTO (3)");
         } catch (Exception e) {
             logger.error("Error configuring Tesseract OCR: {}", e.getMessage());
         }
@@ -418,7 +418,7 @@ public class OcrService {
         // tesseractInstance.setLanguage(language);
         
         // Optimize Tesseract parameters based on the content
-        tesseractInstance.setPageSegMode(1); // Automatic page segmentation with OSD
+        tesseractInstance.setPageSegMode(3); // PSM_AUTO - Fully automatic page segmentation, but no OSD.
         
         // Set DPI to improve recognition (can be adjusted based on the image quality)
         tesseractInstance.setVariable("user_defined_dpi", "400");

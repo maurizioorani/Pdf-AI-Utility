@@ -37,6 +37,7 @@ import com.pdf.marsk.pdfdemo.service.OllamaService;
 import com.pdf.marsk.pdfdemo.service.ProgressTrackingService;
 import com.pdf.marsk.pdfdemo.service.TaskProgressInfo;
 import com.pdf.marsk.pdfdemo.service.ProgressTrackingService.OcrProgressInfo;
+import com.pdf.marsk.pdfdemo.exception.OllamaConnectivityException; // Added import
 
 import net.sourceforge.tess4j.TesseractException;
 
@@ -125,6 +126,12 @@ public class OcrController implements DisposableBean, ApplicationListener<Contex
                            model.addAttribute("originalOcrText", ocrText);
                            model.addAttribute("showComparison", true);
                            if (result.wasAnalysisFixed()) model.addAttribute("analysisDetected", true);
+                       } catch (OllamaConnectivityException oce) {
+                           logger.error("Ollama connectivity error during GET enhancement for task ID {}: {}", completedTaskId, oce.getMessage());
+                           model.addAttribute("ocrResult", ocrText); // Keep original OCR text
+                           model.addAttribute("ocrError", "Ollama Connection Error: " + oce.getMessage());
+                           model.addAttribute("ollamaConnectionError", true); // Signal to frontend
+                           model.addAttribute("isEnhanced", false);
                        } catch (Exception e) {
                            logger.error("Error enhancing OCR text for task ID {}: {}", completedTaskId, e.getMessage());
                            model.addAttribute("ocrResult", ocrText);
@@ -402,12 +409,26 @@ public class OcrController implements DisposableBean, ApplicationListener<Contex
                     return "redirect:/ocr"; 
                 }
             } else {
-                return "redirect:/ocr"; 
+                return "redirect:/ocr";
             }
+        } catch (OllamaConnectivityException oce) {
+            logger.error("Ollama connectivity error during POST enhancement: {}", oce.getMessage());
+            redirectAttributes.addFlashAttribute("ocrError", "Ollama Connection Error: " + oce.getMessage());
+            redirectAttributes.addFlashAttribute("ollamaConnectionError", true); // Signal to frontend
+            redirectAttributes.addFlashAttribute("isEnhanced", false);
+            // Preserve other relevant attributes for the redirect
+            redirectAttributes.addFlashAttribute("originalOcrText", ocrText);
+            redirectAttributes.addFlashAttribute("originalFilename", originalFilename);
+            redirectAttributes.addFlashAttribute("language", language);
+            redirectAttributes.addFlashAttribute("enhancementModel", modelName);
+            redirectAttributes.addFlashAttribute("documentType", documentType);
+            if (ocrTaskId != null) redirectAttributes.addFlashAttribute("ocrTaskId", ocrTaskId);
+            if (documentId != null) return "redirect:/ocr/documents/" + documentId;
+            return "redirect:/ocr";
         } catch (Exception e) {
             logger.error("Error enhancing OCR text: {}", e.getMessage(), e);
             redirectAttributes.addFlashAttribute("ocrError", "Failed to enhance text: " + e.getMessage());
-            redirectAttributes.addFlashAttribute("isEnhanced", false); 
+            redirectAttributes.addFlashAttribute("isEnhanced", false);
             if (documentId != null) {
                 return "redirect:/ocr/documents/" + documentId; // Keep this redirect
             }

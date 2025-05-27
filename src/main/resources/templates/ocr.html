@@ -365,6 +365,26 @@
         </div>
     </div>
 
+    <!-- Ollama Connection Error Modal -->
+    <div class="modal fade" id="ollamaErrorModal" tabindex="-1" aria-labelledby="ollamaErrorModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="ollamaErrorModalLabel">Ollama Connection Issue</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Could not connect to the Ollama server to enhance the text.</p>
+                    <p>Please ensure that your Ollama server is running and accessible at the configured address (usually <code>http://localhost:11434</code>).</p>
+                    <p>The OCR process completed, but the text enhancement step was skipped due to this issue.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Footer -->
     <div th:replace="~{fragments/footer :: page-footer}"></div>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
@@ -435,6 +455,13 @@
                     processingModal.show();
                 }
             });
+
+            // Check for Ollama connection error and show modal
+            const ollamaConnectionError = '[[${ollamaConnectionError}]]'; // Get value from Thymeleaf
+            if (ollamaConnectionError === 'true') {
+                const ollamaErrorModal = new bootstrap.Modal(document.getElementById('ollamaErrorModal'));
+                ollamaErrorModal.show();
+            }
             
             // Function to poll for progress updates
             function pollProgress(taskId) {
