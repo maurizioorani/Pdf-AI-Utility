@@ -25,6 +25,8 @@ services:
       - "11434:11434"
     volumes:
       - ollama_data:/root/.ollama # Persist Ollama models
+      - ./entrypoint-ollama.sh:/entrypoint-ollama.sh # Mount the custom entrypoint script
+    entrypoint: ["/bin/sh", "/entrypoint-ollama.sh"] # Override the default entrypoint
     # For GPU support (optional, uncomment and adjust if you have NVIDIA GPU and drivers):
     # deploy:
     #   resources:
