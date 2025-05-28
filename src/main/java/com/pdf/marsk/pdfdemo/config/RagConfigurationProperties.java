@@ -31,7 +31,7 @@ public class RagConfigurationProperties {
         this.maxContextSize = maxContextSize > 0 ? maxContextSize : 2000;
         this.contextWindowOverlap = contextWindowOverlap >= 0 ? contextWindowOverlap : 200;
         this.documentsPath = documentsPath;
-        this.chatModelName = chatModelName != null && !chatModelName.isEmpty() ? chatModelName : "gpt-4o-mini"; // Initialize chatModelName with a default
+        this.chatModelName = chatModelName != null && !chatModelName.isEmpty() ? chatModelName : "ollama-model"; // Initialize chatModelName with a default
     }
     
     public boolean isEnabled() {

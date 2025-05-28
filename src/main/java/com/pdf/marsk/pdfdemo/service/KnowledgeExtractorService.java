@@ -1,9 +1,12 @@
 package com.pdf.marsk.pdfdemo.service;
 
 import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.file.FileSystems;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.PathMatcher;
 import java.nio.file.Paths;
@@ -18,6 +21,7 @@ import org.apache.pdfbox.text.PDFTextStripper; // Added for PDFBox
 import java.util.concurrent.ExecutorService; // Added
 import java.util.concurrent.Executors; // Added
 import java.util.stream.Collectors; // Added for stream operations
+import org.springframework.mock.web.MockMultipartFile; // Added for OCR
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,13 +46,13 @@ import jakarta.annotation.PostConstruct;
 
 @Service
 public class KnowledgeExtractorService { // Renamed from Easy_RAG_Example
-
     private static final Logger logger = LoggerFactory.getLogger(KnowledgeExtractorService.class);
 
     private final ChatModel chatModel;
     // private final String openaiApiKey; // Removed
     private final RagConfigurationProperties ragConfig;
     private final EmbeddingModel embeddingModel;
+    private final OcrService ocrService; // Added for OCR support
     private Assistant assistant;
     private List<Document> loadedDocuments = new java.util.ArrayList<>();
     private final ExecutorService executorService; // Added for background tasks
@@ -57,12 +61,14 @@ public class KnowledgeExtractorService { // Renamed from Easy_RAG_Example
     interface Assistant {
         String chat(String message);
     }
-
+    
     public KnowledgeExtractorService(@Value("${spring.ai.ollama.base-url}") String ollamaBaseUrl,
                                      RagConfigurationProperties ragConfig,
-                                     EmbeddingModel embeddingModel) { // Added EmbeddingModel
+                                     EmbeddingModel embeddingModel,
+                                     OcrService ocrService) { // Added OcrService
         this.ragConfig = ragConfig;
-        this.embeddingModel = embeddingModel; // Added
+        this.embeddingModel = embeddingModel;
+        this.ocrService = ocrService; // Added OCR service
         this.chatModel = OllamaChatModel.builder()
                 .baseUrl(ollamaBaseUrl)
                 .modelName(ragConfig.getChatModelName()) // Ensure this provides an Ollama model name
@@ -130,43 +136,84 @@ public class KnowledgeExtractorService { // Renamed from Easy_RAG_Example
      * @param progressTrackingService Service to report progress to.
      * @param taskId The ID for tracking this task.
      * @param pdfInputStream InputStream of the PDF file.
+     * @param useOcr Whether to use OCR processing for the PDF.
      * @return The taskId.
      */
     public String addPdfDocumentAndReinitializeAsync(String fileName, InputStream pdfInputStream,
-                                                     ProgressTrackingService progressTrackingService, String taskId) {
-        logger.info("Task {}: Asynchronously adding PDF document '{}' to RAG knowledge base.", taskId, fileName);
+                                                     ProgressTrackingService progressTrackingService, String taskId,
+                                                     boolean useOcr) {
+        logger.info("Task {}: Asynchronously adding PDF document '{}' to RAG knowledge base. OCR: {}", taskId, fileName, useOcr);
 
         executorService.submit(() -> {
             List<Document> pageDocuments = new ArrayList<>();
             int totalPages = 0;
             try {
                 progressTrackingService.updateTaskProgress(taskId, "PDF Parsing", 10, "Loading PDF document...");
-                try (PDDocument pdfDoc = PDDocument.load(pdfInputStream)) {
-                    PDFTextStripper pdfStripper = new PDFTextStripper();
-                    totalPages = pdfDoc.getNumberOfPages();
-                    progressTrackingService.updateTaskProgress(taskId, "PDF Parsing", 15, "Found " + totalPages + " pages. Extracting text...");
-
-                    for (int pageNum = 1; pageNum <= totalPages; pageNum++) {
-                        pdfStripper.setStartPage(pageNum);
-                        pdfStripper.setEndPage(pageNum);
-                        String pageText = pdfStripper.getText(pdfDoc);
-
-                        dev.langchain4j.data.document.Metadata pageMetadata = new dev.langchain4j.data.document.Metadata();
-                        pageMetadata.put("source", fileName + "_page_" + pageNum);
-                        pageMetadata.put("original_source", fileName);
-                        pageMetadata.put("page_number", String.valueOf(pageNum));
-                        pageMetadata.put("processed_on", LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
-                        
-                        if (pageText != null && !pageText.trim().isEmpty()) {
-                            pageDocuments.add(Document.from(pageText, pageMetadata));
-                        } else {
-                            logger.warn("Task {}: Page {} of document '{}' contained no extractable text. Skipping.", taskId, pageNum, fileName);
+                
+                if (useOcr) {
+                    // Create a temporary file from the input stream to pass to OCR service
+                    File tempFile = File.createTempFile("ocr_rag_", "_" + fileName);
+                    try (FileOutputStream fos = new FileOutputStream(tempFile)) {
+                        byte[] buffer = new byte[1024];
+                        int bytesRead;
+                        while ((bytesRead = pdfInputStream.read(buffer)) != -1) {
+                            fos.write(buffer, 0, bytesRead);
                         }
-                        
-                        int currentProgress = 15 + (int) (((double) pageNum / totalPages) * 60); // Text extraction: 15% to 75%
-                        progressTrackingService.updateTaskProgress(taskId, "Text Extraction", currentProgress, "Processed page " + pageNum + " of " + totalPages);
                     }
-                } // PDDocument is closed here
+                      progressTrackingService.updateTaskProgress(taskId, "OCR Processing", 15, 
+                        "Starting OCR processing for scanned PDF...");
+                    
+                    // Process the PDF with OCR (using English as default language)
+                    // Create a MultipartFile from the temp file to use with the public performOcr method
+                    org.springframework.web.multipart.MultipartFile multipartFile = 
+                        new org.springframework.mock.web.MockMultipartFile(
+                            fileName, 
+                            fileName,
+                            "application/pdf", 
+                            Files.readAllBytes(tempFile.toPath())
+                        );
+                    String ocrText = ocrService.performOcr(multipartFile, "eng", taskId);
+                    
+                    // Create a single document from the OCR text
+                    dev.langchain4j.data.document.Metadata docMetadata = new dev.langchain4j.data.document.Metadata();
+                    docMetadata.put("source", fileName);
+                    docMetadata.put("original_source", fileName);
+                    docMetadata.put("ocr_processed", "true");
+                    docMetadata.put("processed_on", LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
+                    
+                    pageDocuments.add(Document.from(ocrText, docMetadata));
+                    
+                    // Clean up the temp file
+                    tempFile.delete();
+                } else {
+                    // Standard text extraction for regular PDFs
+                    try (PDDocument pdfDoc = PDDocument.load(pdfInputStream)) {
+                        PDFTextStripper pdfStripper = new PDFTextStripper();
+                        totalPages = pdfDoc.getNumberOfPages();
+                        progressTrackingService.updateTaskProgress(taskId, "PDF Parsing", 15, "Found " + totalPages + " pages. Extracting text...");
+
+                        for (int pageNum = 1; pageNum <= totalPages; pageNum++) {
+                            pdfStripper.setStartPage(pageNum);
+                            pdfStripper.setEndPage(pageNum);
+                            String pageText = pdfStripper.getText(pdfDoc);
+
+                            dev.langchain4j.data.document.Metadata pageMetadata = new dev.langchain4j.data.document.Metadata();
+                            pageMetadata.put("source", fileName + "_page_" + pageNum);
+                            pageMetadata.put("original_source", fileName);
+                            pageMetadata.put("page_number", String.valueOf(pageNum));
+                            pageMetadata.put("processed_on", LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
+                            
+                            if (pageText != null && !pageText.trim().isEmpty()) {
+                                pageDocuments.add(Document.from(pageText, pageMetadata));
+                            } else {
+                                logger.warn("Task {}: Page {} of document '{}' contained no extractable text. Skipping.", taskId, pageNum, fileName);
+                            }
+                            
+                            int currentProgress = 15 + (int) (((double) pageNum / totalPages) * 60); // Text extraction: 15% to 75%
+                            progressTrackingService.updateTaskProgress(taskId, "Text Extraction", currentProgress, "Processed page " + pageNum + " of " + totalPages);
+                        }
+                    } // PDDocument is closed here
+                }
 
                 progressTrackingService.updateTaskProgress(taskId, "Ingesting Document", 75, "Ingesting " + pageDocuments.size() + " page(s) into embedding store...");
                 synchronized (this) { // Synchronize access to loadedDocuments and assistant re-initialization

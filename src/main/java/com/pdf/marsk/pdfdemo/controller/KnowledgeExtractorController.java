@@ -2,10 +2,11 @@ package com.pdf.marsk.pdfdemo.controller;
 
 import com.pdf.marsk.pdfdemo.config.RagConfigurationProperties;
 import com.pdf.marsk.pdfdemo.service.KnowledgeExtractorService;
+import com.pdf.marsk.pdfdemo.service.OcrService;
 import com.pdf.marsk.pdfdemo.service.OllamaService;
 import com.pdf.marsk.pdfdemo.service.ProgressTrackingService;
 import com.pdf.marsk.pdfdemo.service.TaskProgressInfo;
-import com.pdf.marsk.pdfdemo.service.KnowledgeExtractionProgressInfo; // Added import
+import com.pdf.marsk.pdfdemo.service.KnowledgeExtractionProgressInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
@@ -113,14 +114,11 @@ public class KnowledgeExtractorController {
     // --- Methods from the old KnowledgeExtractorService functionality ---
     // These are now commented out as the service has changed.
     // They need to be re-evaluated: either removed, or the old functionality
-    // needs to be re-integrated or moved to a new service.
-
-    // TODO: This method needs to be adapted to work with the current KnowledgeExtractorService (ragService)
-    // which uses an in-memory store and loads documents at startup.
-    // A proper implementation would require ragService to support dynamic document addition.
+    // needs to be re-integrated or moved to a new service.    // Handles document uploads to the RAG knowledge base
     @PostMapping("/process")
     public String handleDocumentUpload(@RequestParam("pdfFile") org.springframework.web.multipart.MultipartFile pdfFile,
                                        @RequestParam(name = "modelName", required = false) String selectedModel, // model for processing
+                                       @RequestParam(name = "useOcr", defaultValue = "false") boolean useOcr, // OCR checkbox
                                        RedirectAttributes redirectAttributes) {
         if (pdfFile.isEmpty()) {
             redirectAttributes.addFlashAttribute("errorMessage", "Please select a PDF file to upload.");
@@ -133,15 +131,17 @@ public class KnowledgeExtractorController {
             selectedModel != null ? selectedModel : ragConfig.getChatModelName() // Use selected or default
         );
         progressTrackingService.updateTaskProgress(taskId, "Upload Received", 10, "File upload received by server.");
-
-        // The service method addPdfDocumentAndReinitializeAsync handles PDF parsing
-        // from InputStream and updates progress internally.
-        try {
+        
+        // Log the OCR selection
+        logger.info("Processing document with OCR: {}", useOcr);
+        
+        try {            // Call service method to process the PDF with OCR parameter
             ragService.addPdfDocumentAndReinitializeAsync(
                 pdfFile.getOriginalFilename(),
                 pdfFile.getInputStream(),
                 progressTrackingService,
-                taskId
+                taskId,
+                useOcr
             );
         } catch (java.io.IOException ioe) {
             logger.error("Error getting InputStream from uploaded file for task {}: {}", taskId, pdfFile.getOriginalFilename(), ioe);

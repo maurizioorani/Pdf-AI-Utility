@@ -2,6 +2,7 @@ package com.pdf.marsk.pdfdemo.service;
 
 import org.apache.pdfbox.multipdf.Splitter;
 import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.pdmodel.encryption.InvalidPasswordException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -33,19 +34,37 @@ public class PdfSplitService {
             throw new IllegalArgumentException("Invalid file type provided: " + pdfFile.getOriginalFilename() + ". Only PDF files are allowed.");
         }
 
-        List<PDDocument> splitDocuments = new ArrayList<>(); // Initialize here for access in finally
+        List<PDDocument> splitDocuments = new ArrayList<>();
+        PDDocument document = null; // Declare here to be accessible in the finally block
 
-        try (InputStream inputStream = pdfFile.getInputStream();
-             PDDocument document = PDDocument.load(inputStream)) {
+        try (InputStream inputStream = pdfFile.getInputStream()) {
+            try {
+                document = PDDocument.load(inputStream, ""); // Attempt to load with empty password
+            } catch (InvalidPasswordException e) {
+                logger.warn("Cannot split password-protected PDF {}: {}", pdfFile.getOriginalFilename(), e.getMessage());
+                throw new IOException("Encrypted PDFs cannot be split with this method.", e);
+            }
 
+            // At this point, 'document' should be non-null if no InvalidPasswordException was thrown.
+            // However, it's good practice to check, though load() would throw an IOException if it failed for other reasons.
+            if (document == null) {
+                // This case should ideally not be reached if load() behaves as expected.
+                throw new IOException("Failed to load PDF document: " + pdfFile.getOriginalFilename());
+            }
+
+            // Check if encrypted even after loading (e.g. restrictions without open password)
+            // Note: The splitter itself might also have issues with certain types of encryption/restrictions.
             if (document.isEncrypted()) {
-                logger.warn("Cannot split an encrypted PDF: {}", pdfFile.getOriginalFilename());
+                logger.warn("PDF {} is marked as encrypted after loading; cannot split.", pdfFile.getOriginalFilename());
+                // The 'finally' block will handle closing 'document'.
                 throw new IOException("Encrypted PDFs cannot be split with this method.");
             }
 
             Splitter splitter = new Splitter();
-            // Populate the list directly
+            // splitter.split(document) closes the input 'document'.
+            // So, 'document' should not be used after this call.
             splitDocuments.addAll(splitter.split(document));
+            document = null; // Set to null to indicate it has been closed by the splitter.
 
             if (splitDocuments.isEmpty()) {
                 throw new IOException("Splitting the PDF resulted in no documents.");
@@ -62,9 +81,8 @@ public class PdfSplitService {
                         zos.write(pageBos.toByteArray());
                         zos.closeEntry();
                     } finally {
-                        // Document is closed here after being written to the zip entry
                         if (singlePageDoc != null) {
-                           try { singlePageDoc.close(); } catch (IOException e) { logger.error("Error closing singlePageDoc in ZIP loop: {}", e.getMessage(), e); }
+                           try { singlePageDoc.close(); } catch (IOException ex) { logger.error("Error closing singlePageDoc in ZIP loop: {}", ex.getMessage(), ex); }
                         }
                     }
                 }
@@ -73,11 +91,23 @@ public class PdfSplitService {
             return zipBos.toByteArray();
 
         } catch (IOException e) {
-            logger.error("Error during PDF split (every page) for {}: {}", pdfFile.getOriginalFilename(), e.getMessage(), e);
-            // The finally block below will handle closing documents
+            boolean isOurEncryptionException = "Encrypted PDFs cannot be split with this method.".equals(e.getMessage());
+            if (!isOurEncryptionException) {
+                logger.error("Error during PDF split (every page) for {}: {}", pdfFile.getOriginalFilename(), e.getMessage(), e);
+            }
             throw e;
         } finally {
-            // Ensure all documents in the list are closed, especially if an error occurred before the loop finished.
+            // If 'document' is not null here, it means it was loaded but an exception occurred
+            // before the splitter could close it (e.g., during the isEncrypted check or if splitter.split failed).
+            if (document != null) {
+                try {
+                    document.close();
+                } catch (IOException e) {
+                    logger.error("Error closing main document in outer finally: {}", e.getMessage(), e);
+                }
+            }
+            // Ensure all documents in the splitDocuments list are closed if an error occurred before they were processed.
+            // This is a safeguard, as they should be closed within the loop normally.
             closeDocuments(splitDocuments);
         }
     }

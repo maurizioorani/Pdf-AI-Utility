@@ -15,10 +15,10 @@ import java.util.Map;
  * Supports efficient retrieval and semantic search
  */
 @Entity
-@Table(name = "document_chunks", indexes = {
-        @Index(name = "idx_document_chunks_document_id", columnList = "documentId"),
-        @Index(name = "idx_document_chunks_chunk_index", columnList = "chunkIndex"),
-        @Index(name = "idx_document_chunks_created_at", columnList = "createdAt")
+@Table(name = "document_chunk", indexes = {
+        @Index(name = "idx_document_chunk_document_id", columnList = "documentId"),
+        @Index(name = "idx_document_chunk_chunk_index", columnList = "chunkIndex"),
+        @Index(name = "idx_document_chunk_created_at", columnList = "createdAt")
 })
 @Data
 @NoArgsConstructor
@@ -55,7 +55,7 @@ public class DocumentChunk {
     private String contentHash;
     
     @ElementCollection(fetch = FetchType.EAGER) // Changed to EAGER
-    @CollectionTable(name = "document_chunk_embeddings",
+    @CollectionTable(name = "document_chunk_embedding",
                      joinColumns = @JoinColumn(name = "chunk_id"))
     @Column(name = "embedding_value")
     private List<Double> embedding;
