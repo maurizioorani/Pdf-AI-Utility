@@ -32,6 +32,9 @@
                         <a class="nav-link" th:classappend="${activePage == 'protect' ? 'active' : ''}" th:href="@{/protect}">Protect PDF</a>
                     </li>
                     <li class="nav-item">
+                        <a class="nav-link" th:classappend="${activePage == 'watermark' ? 'active' : ''}" th:href="@{/watermark}">Watermark PDF</a>
+                    </li>
+                    <li class="nav-item">
                         <a class="nav-link" th:classappend="${activePage == 'rag' ? 'active' : ''}" th:href="@{/rag}">Knowledge Extractor (RAG)</a>
                     </li>
                     <li class="nav-item" th:if="${activePage == 'simple-generate'}"> <!-- Only show if on simple_generate page -->

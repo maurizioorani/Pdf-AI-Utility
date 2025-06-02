@@ -1,23 +1,17 @@
-version: '3.8'
-
 services:
-  postgres:
-    image: pgvector/pgvector:pg15 # Changed to an image with pgvector support
-    container_name: pdfdemo_postgres_dbonly # Different container name to avoid conflict
+  pgvector-db:
+    env_file:
+      - ./postgres-pgvector/.env
+    build:
+      dockerfile: postgres.dockerfile
+    container_name: postgres-pgvector
     ports:
-      - "5432:5432" # Exposes on the same host port for local app connection
-    environment:
-      POSTGRES_USER: pdfuser
-      POSTGRES_PASSWORD: pdfpassword
-      POSTGRES_DB: pdfdb
+      - "5454:5432"
     volumes:
-      - postgres_data_dbonly:/var/lib/postgresql/data # Separate volume to avoid data conflicts
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U pdfuser -d pdfdb"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      - db_data:/var/lib/postgresql/data
+      - ./postgres/vector_extension.sql/init.sql:/docker-entrypoint-initdb.d/0-vector_extension.sql
+    networks:
+      - default
 
 volumes:
-  postgres_data_dbonly: # Separate named volume
-    driver: local
+  db_data:
