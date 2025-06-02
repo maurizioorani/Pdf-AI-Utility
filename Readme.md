@@ -49,6 +49,7 @@ This application empowers you to:
 -   **Optimize/Compress PDF**: Reduce PDF file size (structural optimization, optional image compression).
 -   **Split PDF**: Divide PDFs by page (every page or custom ranges).
 -   **Protect PDF**: Add password protection (user and owner passwords).
+-   **Watermark PDF**: Add customizable text watermarks with control over opacity, position (center, corners), and text content.
 
 ---
 
@@ -104,7 +105,6 @@ This project uses `docker-compose.yml` for the full stack and `docker-compose.db
 
 ## 🗂️ Roadmap
 
-- 💧 **Watermarking**: Add text/image watermarks.
 - 🖋️ **PDF Form Filling**: Programmatic form field filling.
 - 📏 **Granular PDF Generation Options**: More control over page size, orientation, margins.
 - 🔍 **Dynamic Ollama Model Listing**: Fetch and display available LLMs from Ollama API.
@@ -117,6 +117,7 @@ This project uses `docker-compose.yml` for the full stack and `docker-compose.db
 - **🧠 LangChain4j Integration & Advanced RAG**: Semantic search, vector embeddings, intelligent document processing.
 - **🔧 Custom Similarity Engine**: Database-based cosine similarity.
 - 🧩 **Advanced PDF Splitting**: Options for splitting PDFs by custom page ranges. (✅ COMPLETED)
+- 💧 **PDF Watermarking**: Customizable text watermarks with position and opacity controls. (✅ COMPLETED)
 
 
 ---
