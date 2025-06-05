@@ -4,7 +4,6 @@ import com.pdf.marsk.pdfdemo.model.HtmlTemplate;
 import com.pdf.marsk.pdfdemo.repository.HtmlTemplateRepository;
 import com.openhtmltopdf.pdfboxout.PdfRendererBuilder;
 
-import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import org.commonmark.ext.gfm.tables.TablesExtension;
 import org.commonmark.node.Node;
@@ -114,12 +113,26 @@ public class DocumentConversionController {
             redirectAttributes.addFlashAttribute("error", "An unexpected error occurred during file saving: " + e.getMessage());
         }
         return "redirect:/upload-convert";
-    }
-
-    // --- Template Management (from PdfController) ---
+    }    // --- Template Management (from PdfController) ---
     @GetMapping("/templates") // Was "/generate" in PdfController
-    public String showTemplateManagementPage(Model model) {
-        model.addAttribute("htmlTemplate", new HtmlTemplate()); // For new template form
+    public String showTemplateManagementPage(@RequestParam(required = false) Long templateId, Model model) {
+        HtmlTemplate htmlTemplate;
+        if (templateId != null) {
+            // Load existing template for editing
+            Optional<HtmlTemplate> templateOpt = htmlTemplateRepository.findById(templateId);
+            if (templateOpt.isPresent()) {
+                htmlTemplate = templateOpt.get();
+                logger.info("Loading template for editing: {}", htmlTemplate.getName());
+            } else {
+                logger.warn("Template with ID {} not found, creating new template", templateId);
+                htmlTemplate = new HtmlTemplate();
+            }
+        } else {
+            // Create new template
+            htmlTemplate = new HtmlTemplate();
+        }
+        
+        model.addAttribute("htmlTemplate", htmlTemplate); // For template form
         model.addAttribute("htmlTemplates", htmlTemplateRepository.findAll());
         model.addAttribute("title", "Manage PDF Templates");
         logger.info("Serving template management page.");
@@ -259,14 +272,24 @@ public class DocumentConversionController {
             logger.error("Unexpected exception during conversion of saved file: " + savedFilename, e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).contentType(MediaType.TEXT_PLAIN).body("An unexpected error occurred during conversion of saved file: " + e.getMessage());
         }
-    }
-
-    // --- Utility Methods (from ConvertController) ---
+    }    // --- Utility Methods (from ConvertController) ---
     private byte[] convertHtmlToPdfUtility(String htmlContent) throws IOException {
         logger.debug("Starting HTML to PDF conversion utility.");
+        
+        // Ensure the HTML is well-formed by wrapping it if necessary
+        String wellFormedHtml;
+        if (htmlContent.trim().toLowerCase().startsWith("<!doctype") || 
+            htmlContent.trim().toLowerCase().startsWith("<html")) {
+            // Already a complete HTML document
+            wellFormedHtml = htmlContent;
+        } else {
+            // Wrap content in basic HTML structure
+            wellFormedHtml = "<html><head><meta charset=\"UTF-8\"/></head><body>" + htmlContent + "</body></html>";
+        }
+        
         try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
             PdfRendererBuilder builder = new PdfRendererBuilder();
-            builder.withHtmlContent(htmlContent, null); // Base URI null, assuming self-contained HTML
+            builder.withHtmlContent(wellFormedHtml, null); // Base URI null, assuming self-contained HTML
             builder.toStream(baos);
             builder.run();
             byte[] pdfBytes = baos.toByteArray();

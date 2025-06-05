@@ -38,14 +38,13 @@
                     </div>
                     <div class="card-body">
                         <div class="tab-content" id="editorTabsContent">
-                            <div class="tab-pane fade show active" id="editor" role="tabpanel" aria-labelledby="editor-tab">
-                                <form id="htmlForm" method="post">
+                            <div class="tab-pane fade show active" id="editor" role="tabpanel" aria-labelledby="editor-tab">                                <form id="htmlForm" method="post">
                                     <div class="mb-3">
                                         <label for="templateName" class="form-label">Template Name:</label>
-                                        <input type="text" class="form-control" id="templateName" name="templateName" placeholder="Enter a name for your template" th:value="${templateName}">
-                                    </div>                                    <input type="hidden" id="templateId" name="templateId" th:value="${templateId}">
+                                        <input type="text" class="form-control" id="templateName" name="name" placeholder="Enter a name for your template" th:value="${htmlTemplate.name}">
+                                    </div>                                    <input type="hidden" id="templateId" name="id" th:value="${htmlTemplate.id}">
                                     <label for="htmlEditor" class="form-label visually-hidden">HTML Content:</label> <!-- Visually hidden label for accessibility -->
-                                    <textarea id="htmlEditor" name="htmlContent" th:text="${htmlContent}" aria-label="HTML Content Editor"></textarea>
+                                    <textarea id="htmlEditor" name="htmlContent" th:text="${htmlTemplate.htmlContent}" aria-label="HTML Content Editor"></textarea>
                                 </form>
                             </div>
                             <div class="tab-pane fade" id="live-preview" role="tabpanel" aria-labelledby="live-preview-tab">
