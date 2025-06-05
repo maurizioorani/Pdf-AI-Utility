@@ -5,9 +5,14 @@ import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.ChatClient;
 import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.chat.prompt.Prompt;
+import org.springframework.ai.ollama.OllamaChatClient;
+import org.springframework.ai.ollama.api.OllamaApi;
+import org.springframework.ai.ollama.api.OllamaOptions;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import com.pdf.marsk.pdfdemo.exception.OllamaConnectivityException; // Added import
+
+import jakarta.annotation.PostConstruct;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -16,7 +21,6 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
@@ -26,10 +30,12 @@ import java.util.regex.Pattern;
 @Service
 public class OllamaService {
     private static final Logger logger = LoggerFactory.getLogger(OllamaService.class);
-    private final ChatClient chatClient;
-    private final TextChunkingService textChunkingService;
     
-    @Value("${ollama.baseurl:http://localhost:11434}")
+    private final ChatClient defaultChatClient; // Keep for backward compatibility
+    private final TextChunkingService textChunkingService;
+    private OllamaApi ollamaApi; // For dynamic model calls - initialized in @PostConstruct
+    
+    @Value("${spring.ai.ollama.base-url:http://localhost:11434}")
     private String ollamaApiBaseUrl;
     
     @Value("${ollama.chunking.maxWorkers:3}")
@@ -43,15 +49,39 @@ public class OllamaService {
         "(TEXT TO CORRECT:|BUSINESS DOCUMENT TO CORRECT:|ACADEMIC DOCUMENT TO CORRECT:|TECHNICAL DOCUMENT TO CORRECT:|LEGAL DOCUMENT TO CORRECT:|ITALIAN LITERARY TEXT TO CORRECT:|LITERARY TEXT TO CORRECT:)\\s*`{0,3}\\s*([\\s\\S]*?)\\s*(`{0,3}\\s*(Remember: ONLY the corrected text. Nothing else.|Remember: ONLY the corrected Italian text. Nothing else.))?$", 
         Pattern.CASE_INSENSITIVE | Pattern.MULTILINE
     );
-     private static final Pattern SIMPLE_PROMPT_ECHO_PATTERN = Pattern.compile(
+    
+    private static final Pattern SIMPLE_PROMPT_ECHO_PATTERN = Pattern.compile(
         "(LITERARY TEXT TO CORRECT:)\\s*`{0,3}\\s*([\\s\\S]*?)\\s*(`{0,3})?$", 
         Pattern.CASE_INSENSITIVE | Pattern.MULTILINE
     );
 
-
     public OllamaService(ChatClient chatClient, TextChunkingService textChunkingService) {
-        this.chatClient = chatClient;
+        this.defaultChatClient = chatClient;
         this.textChunkingService = textChunkingService;
+    }
+    
+    @PostConstruct
+    public void initializeOllamaApi() {
+        this.ollamaApi = new OllamaApi(ollamaApiBaseUrl);
+    }
+    
+    /**
+     * Creates a ChatClient configured for the specified model
+     */
+    private ChatClient createChatClientForModel(String modelName) {
+        if (modelName == null || modelName.trim().isEmpty()) {
+            logger.warn("No model specified, using default ChatClient");
+            return defaultChatClient;
+        }
+        
+        // Create OllamaOptions with the specified model
+        OllamaOptions options = OllamaOptions.create()
+                .withModel(modelName);
+        
+        // Create OllamaChatClient with the specified model options
+        OllamaChatClient chatClient = new OllamaChatClient(ollamaApi);
+        chatClient = chatClient.withDefaultOptions(options);
+        return chatClient;
     }
 
     public EnhancementResult enhanceText(String text, String modelName, String customPrompt) {
@@ -104,7 +134,9 @@ public class OllamaService {
             UserMessage userMessage = new UserMessage(promptText);
             Prompt prompt = new Prompt(userMessage);
             
-            String llmResponse = chatClient.call(prompt).getResult().getOutput().getContent();
+            // Use dynamic model selection
+            ChatClient modelSpecificClient = createChatClientForModel(modelName);
+            String llmResponse = modelSpecificClient.call(prompt).getResult().getOutput().getContent();
             logger.info("RAW LLM Response for model {}: '{}'", modelName, llmResponse); // Log the raw response
             
             LlmResponseResult result = detectAndFixProblematicResponse(text, llmResponse, modelName);
@@ -150,7 +182,7 @@ public class OllamaService {
             List<String> chunks = textChunkingService.chunkText(text);
             logger.info("Split text into {} chunks for processing with model {}", chunks.size(), modelName);
             
-            if (chunks.size() > 1 && maxChunkingWorkers > 1) {
+            if (!chunks.isEmpty() && maxChunkingWorkers > 1) {
                 return processChunksInParallel(chunks, modelName, customPrompt);
             } else {
                 return processChunksSequentially(chunks, modelName, customPrompt);
@@ -173,7 +205,7 @@ public class OllamaService {
                 anyChunkFixed = true;
             }
         }
-        boolean preservePageMarkers = chunks.size() > 0 && chunks.get(0).contains("--- Page ");
+        boolean preservePageMarkers = !chunks.isEmpty() && chunks.get(0).contains("--- Page ");
         String combinedText = textChunkingService.mergeChunks(enhancedChunks, preservePageMarkers);
         logger.info("Successfully processed and recombined {} text chunks with model {}", chunks.size(), modelName);
         return new EnhancementResult(combinedText, anyChunkFixed);
@@ -201,7 +233,7 @@ public class OllamaService {
                 if (result.wasAnalysisFixed()) anyChunkFixed = true;
             }
             
-            boolean preservePageMarkers = chunks.size() > 0 && chunks.get(0).contains("--- Page ");
+            boolean preservePageMarkers = !chunks.isEmpty() && chunks.get(0).contains("--- Page ");
             String combinedText = textChunkingService.mergeChunks(enhancedChunks, preservePageMarkers);
             logger.info("Successfully processed {} text chunks in parallel with model {}", chunks.size(), modelName);
             return new EnhancementResult(combinedText, anyChunkFixed);
@@ -255,7 +287,10 @@ public class OllamaService {
             logger.info("Generating LLM response with model: {} for prompt (first 100 chars): {}", modelName, fullPrompt.substring(0, Math.min(100, fullPrompt.length())));
             UserMessage userMessage = new UserMessage(fullPrompt);
             Prompt prompt = new Prompt(userMessage);
-            String llmResponse = chatClient.call(prompt).getResult().getOutput().getContent();
+            
+            // Use dynamic model selection
+            ChatClient modelSpecificClient = createChatClientForModel(modelName);
+            String llmResponse = modelSpecificClient.call(prompt).getResult().getOutput().getContent();
             logger.info("Successfully received raw response from LLM model {}", modelName);
             return llmResponse;
         } catch (Exception e) {
@@ -284,11 +319,31 @@ public class OllamaService {
             }
         }
     }
-
+    
     public List<String> getAvailableModels() {
-        List<String> models = List.of("llama3", "llama3:8b", "llama3:70b", "mistral", "mistral-small", "mixtral", "gemma:7b", "gemma:2b", "phi3:small", "phi3:medium", "codellama", "llava");
+        // Updated model list based on actual available models on Ollama server
+        List<String> models = List.of(
+            "devstral:latest",
+            "llama3.2:latest", 
+            "qwen3_modded:latest",
+            "deepseek_modded:latest",
+            "deepseek_context:latest",
+            "codellama_context:latest",
+            "codellama:13b-code",
+            "llama3:8b-instruct-q8_0",
+            "qwen3:latest",
+            "glm4:latest",
+            "deepseek-coder-v2:latest",
+            "deepseek-r1:latest",
+            "Qwen2.5-Coder:14b",
+            "Qwen2.5-Coder:latest",
+            "deepseek-coder:6.7b",
+            "phi4:latest",
+            "deepseek-r1:14b",
+            "gemma3:12b"
+        );
         try {
-            logger.info("Returning hardcoded list of Ollama models. Count: {}", models.size());
+            logger.info("Returning updated list of actually available Ollama models. Count: {}", models.size());
         } catch (Exception e) {
             System.err.println("OllamaService: Failed to log in getAvailableModels: " + e.getMessage()); 
         }
@@ -299,41 +354,36 @@ public class OllamaService {
         String commonHeader = "IMPORTANT: Your entire response MUST be ONLY the corrected text. No preambles, no explanations, no apologies, no conversational filler. Start directly with the corrected text. The text to correct is provided below the line 'TEXT TO CORRECT:'.\n\nYou are a meticulous and highly accurate OCR error correction engine. Your SOLE AND ONLY task is to identify and fix OCR errors in the provided scanned text.\n\nCRITICAL INSTRUCTIONS:\n- ABSOLUTELY DO NOT analyze, interpret, summarize, rephrase, or explain the text content in any way.\n- ABSOLUTELY DO NOT add any new information, opinions, or interpretations.\n- ABSOLUTELY DO NOT add any introductory phrases (like \"Okay, here is the corrected text:\", \"I understand...\", \"Certainly...\"), concluding remarks, or any text other than the corrected OCR output.\n- Your output MUST be ONLY the corrected version of the input text.\n- DO NOT ask for the text; it is provided below.\n\nDETAILED CORRECTION GUIDELINES:\n1.  Correct spelling mistakes that are clearly OCR errors (e.g., \"lettcr\" -> \"letter\", \"num8er\" -> \"number\").\n2.  Fix word segmentation problems (e.g., \"wor d\" -> \"word\", \"helloworld\" -> \"hello world\" if contextually appropriate).\n3.  Restore correct punctuation and capitalization where it's obviously missing or incorrect due to OCR.\n4.  Meticulously preserve the original paragraph structure, line breaks, and formatting (indentation, spacing). If the original has specific formatting, replicate it.\n5.  DO NOT change sentence structure or word order unless it's a clear and unambiguous OCR error causing nonsensical phrasing. (e.g., \"the cat sat\" should NOT become \"the feline was seated\").\n6.  Pay close attention to numbers, dates, and special characters, ensuring they are accurately transcribed.\n7.  If unsure about a correction, err on the side of preserving the original text segment. It's better to leave a potential minor OCR error than to introduce an incorrect \"fix\".\n";
         String commonFooter = "\nRemember: ONLY the corrected text. Nothing else.";
 
-        switch (documentType.toLowerCase()) {
-            case "business":
-                return commonHeader +
+        return switch (documentType.toLowerCase()) {
+            case "business" -> commonHeader +
                     "\nDETAILED CORRECTION GUIDELINES FOR BUSINESS DOCUMENTS:\n" +
                     "4.  PAY EXTREME ATTENTION TO: Financial figures (e.g., $1,000.00, €50.75), dates (e.g., 2023-10-27, Oct 27, 2023), proper nouns (company names, people's names, product names), addresses, and contact information. Ensure these are transcribed with perfect accuracy.\n" +
                     "5.  Ensure consistent formatting for lists, tables (if present and discernible), and headings.\n" +
                     "\nEXAMPLE:\nINPUT TEXT (below 'BUSINESS DOCUMENT TO CORRECT:'): \"Acme C0rp. Q3 rep0rt shows revnue of $1,234,S67 for peroid ending Sept 3O, 2O23. Contact: Jhon Doe at (SSS) SSS-S4SS.\"\n" +
                     "CORRECTED OUTPUT (your entire response): \"Acme Corp. Q3 report shows revenue of $1,234,567 for period ending Sept 30, 2023. Contact: John Doe at (555) 555-5455.\"\n" +
                     "\nBUSINESS DOCUMENT TO CORRECT:\n```\n" + text + "\n```" + commonFooter;
-            case "academic":
-                return commonHeader +
+            case "academic" -> commonHeader +
                     "\nDETAILED CORRECTION GUIDELINES FOR ACADEMIC DOCUMENTS:\n" +
                     "4.  PAY EXTREME ATTENTION TO: Citation formats (e.g., APA, MLA, (Author, Year)), references, footnotes, endnotes, technical terms, equations, mathematical notations, and scientific symbols. Ensure these are transcribed with perfect accuracy and formatting.\n" +
                     "5.  Preserve formatting of abstracts, headings, subheadings, and lists.\n" +
                     "\nEXAMPLE:\nINPUT TEXT (below 'ACADEMIC DOCUMENT TO CORRECT:'): \"Resrch by Jnes et a1 (2Ol9) sh0ws that X = Y^2 + Z / (n-1). The p-va1ue was < O.O1.\"\n" +
                     "CORRECTED OUTPUT (your entire response): \"Research by Jones et al. (2019) shows that X = Y^2 + Z / (n-1). The p-value was < 0.01.\"\n" +
                     "\nACADEMIC DOCUMENT TO CORRECT:\n```\n" + text + "\n```" + commonFooter;
-            case "technical":
-                return commonHeader +
+            case "technical" -> commonHeader +
                     "\nDETAILED CORRECTION GUIDELINES FOR TECHNICAL DOCUMENTS:\n" +
                     "4.  PAY EXTREME ATTENTION TO:\n    - Code snippets (preserve indentation, syntax, special characters like ;, {}, (), []).\n    - Technical terms, acronyms, and jargon specific to the domain.\n    - Mathematical equations, formulas, and symbols.\n    - Units of measurement (e.g., kg, m/s, °C).\n    - Part numbers, version numbers, and model identifiers.\n" +
                     "5.  Preserve formatting of diagrams (if text within them), tables, and technical specifications.\n" +
                     "\nEXAMPLE:\nINPUT TEXT (below 'TECHNICAL DOCUMENT TO CORRECT:'): \"The `calculate_sum` funct1on takes two 1ntegers (a, b) and retums their sum. See Fig. 3.1 for details. Max V0ltage: S.SV\"\n" +
                     "CORRECTED OUTPUT (your entire response): \"The `calculate_sum` function takes two integers (a, b) and returns their sum. See Fig. 3.1 for details. Max Voltage: 5.5V\"\n" +
                     "\nTECHNICAL DOCUMENT TO CORRECT:\n```\n" + text + "\n```" + commonFooter;
-            case "legal":
-                return commonHeader +
+            case "legal" -> commonHeader +
                     "\nDETAILED CORRECTION GUIDELINES FOR LEGAL DOCUMENTS:\n" +
                     "4.  PAY EXTREME ATTENTION TO:\n    - Legal terminology (e.g., \"heretofore\", \"res ipsa loquitur\", \"inter alia\").\n    - Case citations (e.g., Smith v. Jones, 123 U.S. 456 (2023)).\n    - Statutes and section numbers (e.g., 28 U.S.C. § 1331).\n    - Names of parties, courts, judges, and legal authorities.\n    - Dates, monetary amounts, and specific clauses.\n" +
                     "5.  Preserve formatting of numbered/lettered paragraphs, indentations, and block quotes.\n" +
                     "\nEXAMPLE:\nINPUT TEXT (below 'LEGAL DOCUMENT TO CORRECT:'): \"Pursu@nt to Sectoin 1O(b) of the Act, the Plaint1ff alleges fraud. See also, Roe v. Wade, 4lO U.S. ll3 (l973).\"\n" +
                     "CORRECTED OUTPUT (your entire response): \"Pursuant to Section 10(b) of the Act, the Plaintiff alleges fraud. See also, Roe v. Wade, 410 U.S. 113 (1973).\"\n" +
                     "\nLEGAL DOCUMENT TO CORRECT:\n```\n" + text + "\n```" + commonFooter;
-            case "italian-literary":
-                return "IMPORTANT: Your entire response MUST be ONLY the corrected Italian text. No preambles, no explanations, no apologies, no conversational filler. Start directly with the corrected Italian text. The text to correct is provided below the line 'ITALIAN LITERARY TEXT TO CORRECT:'.\n\n" +
+            case "italian-literary" -> "IMPORTANT: Your entire response MUST be ONLY the corrected Italian text. No preambles, no explanations, no apologies, no conversational filler. Start directly with the corrected Italian text. The text to correct is provided below the line 'ITALIAN LITERARY TEXT TO CORRECT:'.\n\n" +
                     "You are a meticulous and highly accurate OCR error correction engine, specializing in ITALIAN LITERARY TEXTS. Your SOLE AND ONLY task is to identify and fix OCR errors in the provided scanned Italian text, PRESERVING IT IN ITALIAN.\n\n" +
                     "CRITICAL INSTRUCTIONS:\n- ABSOLUTELY DO NOT TRANSLATE any part of the text into English or any other language. The output MUST remain in Italian.\n- ABSOLUTELY DO NOT analyze, interpret, summarize, rephrase, or explain the text content in any way.\n- ABSOLUTELY DO NOT add any new information, opinions, or interpretations.\n- ABSOLUTELY DO NOT add any introductory phrases (like \"Certo, ecco il testo:\", \"Ho capito...\", \"Va bene...\"), concluding remarks, or any text other than the corrected Italian OCR output.\n- Your output MUST be ONLY the corrected version of the input text, IN ITALIAN.\n- DO NOT ask for the text; it is provided below.\n\n" +
                     "DETAILED CORRECTION GUIDELINES FOR ITALIAN LITERARY TEXTS:\n" +
@@ -346,8 +396,7 @@ public class OllamaService {
                     "EXAMPLE:\nINPUT TEXT (below 'ITALIAN LITERARY TEXT TO CORRECT:'): \"Nel mezzo del camin di nostra vita mi ritrvai per una selva oscura, che la diritta via era smarita. Ah quanto a dir qual era e cosa dura esta selva selvaggia...\"\n" +
                     "CORRECTED OUTPUT (your entire response): \"Nel mezzo del cammin di nostra vita mi ritrovai per una selva oscura, ché la diritta via era smarrita. Ahi quanto a dir qual era è cosa dura esta selva selvaggia...\"\n\n" +
                     "ITALIAN LITERARY TEXT TO CORRECT:\n```\n" + text + "\n```\nRemember: ONLY the corrected Italian text. Nothing else.";
-            case "literary":
-                return commonHeader +
+            case "literary" -> commonHeader +
                     "\nDETAILED CORRECTION GUIDELINES FOR LITERARY TEXTS:\n" +
                     "4.  Preserve artistic or stylistic choices in the original text (e.g., unusual formatting, dialects if discernible, poetic line breaks, intentional misspellings if clearly part of the author's style).\n" +
                     "5.  Meticulously preserve the original paragraph structure, line breaks, indentation, and dialogue formatting (e.g., quotation marks, new lines for new speakers).\n" +
@@ -359,13 +408,13 @@ public class OllamaService {
                     text +
                     "\n```\n" +
                     commonFooter;
-            default: // generic
-                 return commonHeader +
-                    "\nEXAMPLE OF RESPONSE FORMATTING (DO NOT USE THIS ACTUAL TEXT IN YOUR CORRECTION):\n" +
-                    "INPUT TEXT (below 'TEXT TO CORRECT:'): \"Th1s is an exampl of tExt w1th err0rs.\"\n" +
-                    "CORRECTED OUTPUT (your entire response): \"This is an example of text with errors.\"\n" +
-                    "\nTEXT TO CORRECT:\n```\n" + text + "\n```" + commonFooter;
-        }
+            default -> // generic
+                    commonHeader +
+                            "\nEXAMPLE OF RESPONSE FORMATTING (DO NOT USE THIS ACTUAL TEXT IN YOUR CORRECTION):\n" +
+                            "INPUT TEXT (below 'TEXT TO CORRECT:'): \"Th1s is an exampl of tExt w1th err0rs.\"\n" +
+                            "CORRECTED OUTPUT (your entire response): \"This is an example of text with errors.\"\n" +
+                            "\nTEXT TO CORRECT:\n```\n" + text + "\n```" + commonFooter;
+        };
     }
     
     public LlmResponseResult detectAndFixProblematicResponse(String originalInputText, String llmResponse, String modelName) {
@@ -465,11 +514,14 @@ public class OllamaService {
                     Provide ONLY the corrected version of the above text:
                     """.formatted(originalInputText);
             }
-                
+            
             try {
                 UserMessage fixUserMessage = new UserMessage(fixPromptText);
                 Prompt fixSystemPrompt = new Prompt(fixUserMessage);
-                String fixedResponse = chatClient.call(fixSystemPrompt).getResult().getOutput().getContent();
+                
+                // Use dynamic model selection for the fix attempt
+                ChatClient modelSpecificClient = createChatClientForModel(modelName);
+                String fixedResponse = modelSpecificClient.call(fixSystemPrompt).getResult().getOutput().getContent();
                 logger.info("RAW LLM Response to FIX ATTEMPT for model {}: '{}'", modelName, fixedResponse); // Log the raw response to the fix prompt
                 
                 String finalFixedResponse = fixedResponse.replaceAll("^\\s*`{0,3}\\s*", "").replaceAll("\\s*`{0,3}\\s*$", "").trim();

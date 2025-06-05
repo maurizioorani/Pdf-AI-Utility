@@ -2,6 +2,8 @@ package com.pdf.marsk.pdfdemo.controller;
 
 import com.pdf.marsk.pdfdemo.model.HtmlTemplate;
 import com.pdf.marsk.pdfdemo.repository.HtmlTemplateRepository;
+import com.pdf.marsk.pdfdemo.service.ContentImprovementService;
+import com.pdf.marsk.pdfdemo.service.OllamaService;
 import com.openhtmltopdf.pdfboxout.PdfRendererBuilder;
 
 import jakarta.validation.Valid;
@@ -41,10 +43,14 @@ import java.util.Optional;
 @RequestMapping("/")
 public class DocumentConversionController {
 
-    private static final Logger logger = LoggerFactory.getLogger(DocumentConversionController.class);
+    private static final Logger logger = LoggerFactory.getLogger(DocumentConversionController.class);    @Autowired
+    private HtmlTemplateRepository htmlTemplateRepository;
 
     @Autowired
-    private HtmlTemplateRepository htmlTemplateRepository;
+    private ContentImprovementService contentImprovementService;
+
+    @Autowired
+    private OllamaService ollamaService;
 
     // --- Home Page (from PdfController) ---
     @GetMapping
@@ -131,9 +137,9 @@ public class DocumentConversionController {
             // Create new template
             htmlTemplate = new HtmlTemplate();
         }
-        
-        model.addAttribute("htmlTemplate", htmlTemplate); // For template form
+          model.addAttribute("htmlTemplate", htmlTemplate); // For template form
         model.addAttribute("htmlTemplates", htmlTemplateRepository.findAll());
+        model.addAttribute("availableModels", ollamaService.getAvailableModels()); // Add available models for AI improvement
         model.addAttribute("title", "Manage PDF Templates");
         logger.info("Serving template management page.");
         return "generate"; // Assumes 'generate.html' view is for template management
@@ -341,9 +347,31 @@ public class DocumentConversionController {
         fullHtml.append("<body>\n");
         fullHtml.append(htmlFragment);
         fullHtml.append("\n</body>\n");
-        fullHtml.append("</html>");
-
-        logger.info("Wrapped Markdown HTML in full XHTML document structure in utility.");
+        fullHtml.append("</html>");        logger.info("Wrapped Markdown HTML in full XHTML document structure in utility.");
         return fullHtml.toString();
+    }
+
+    // --- AI Content Improvement Endpoint ---
+    @PostMapping("/improve-content")
+    public ResponseEntity<String> improveContent(@RequestParam("content") String content,
+                                                @RequestParam(value = "model", defaultValue = "llama3") String modelName) {
+        try {
+            if (content == null || content.trim().isEmpty()) {
+                return ResponseEntity.badRequest().body("Content cannot be empty");
+            }
+
+            String improvedContent = contentImprovementService.improveContent(content, modelName);
+            
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.TEXT_PLAIN);
+            headers.add("Content-Type", "text/plain; charset=UTF-8");
+            
+            return ResponseEntity.ok().headers(headers).body(improvedContent);
+            
+        } catch (Exception e) {
+            logger.error("Error during content improvement: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Error improving content: " + e.getMessage());
+        }
     }
 }

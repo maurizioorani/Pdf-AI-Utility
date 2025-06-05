@@ -2,13 +2,19 @@
 <html lang="en" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Generate PDF from HTML</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">    <title>Generate PDF from HTML</title>
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- CKEditor 5 for HTML editing -->
-    <script src="https://cdn.ckeditor.com/ckeditor5/41.4.2/classic/ckeditor.js"></script>
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- CKEditor 5 for HTML editing -->    <script src="https://cdn.ckeditor.com/ckeditor5/41.4.2/classic/ckeditor.js"></script>
     <link rel="stylesheet" th:href="@{/css/style.css}" />
+    <style>
+        .improve-model-select {
+            width: auto;
+            min-width: 150px;
+        }
+    </style>
 </head>
 <body>
     <!-- Navigation -->
@@ -55,12 +61,21 @@
                 </div>
             </div>
         </div>
-        
-        <div class="row">
-            <div class="col-12">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
+          <div class="row">
+            <div class="col-12">                <div class="d-flex justify-content-between align-items-center">
+                    <div class="d-flex align-items-center flex-wrap gap-2">
                         <button id="saveBtn" class="btn btn-info me-2" onclick="saveHtmlTemplate()">Save Template</button>
+                        <div class="d-flex align-items-center gap-2">
+                            <button id="improveBtn" class="btn btn-warning" onclick="improveContentWithAI()">
+                                <i class="fas fa-robot me-1"></i>Improve with AI
+                            </button>
+                            <select id="improveModelSelection" name="improveModelName" class="form-select improve-model-select" 
+                                    title="Select AI model for content improvement" aria-label="Select AI model for content improvement">
+                                <option value="">Select AI Model</option>
+                                <option th:each="model : ${availableModels}" th:value="${model}" th:text="${model}" 
+                                        th:selected="${model == 'llama3'}">Model</option>
+                            </select>
+                        </div>
                     </div>
                     <div>
                         <button id="previewBtn" class="btn btn-primary me-2" onclick="previewPdf()">Preview PDF</button>
@@ -96,29 +111,52 @@
     <div th:replace="~{fragments/footer :: page-footer}"></div>
 
     <!-- Scripts -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    
-    <script>
-        let ckeditorInstance;
-
-        ClassicEditor
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>    <script>
+        let ckeditorInstance;        ClassicEditor
             .create(document.querySelector('#htmlEditor'), {
-                // CKEditor 5 configuration options can go here
-                // For example, to include more plugins, you might need a custom build
-                // The default Classic build includes many common features like tables, images, lists etc.
                 toolbar: {
                     items: [
                         'undo', 'redo',
                         '|', 'heading',
-                        '|', 'bold', 'italic', 'underline', 'strikethrough',
+                        '|', 'bold', 'italic', 'underline', 'strikethrough', 'subscript', 'superscript',
+                        '|', 'fontSize', 'fontFamily', 'fontColor', 'fontBackgroundColor',
                         '|', 'link', 'insertImage', 'insertTable', 'blockQuote', 'mediaEmbed',
                         '|', 'bulletedList', 'numberedList', 'outdent', 'indent',
-                        '|', 'alignment',
-                        '|', 'fontFamily', 'fontSize', 'fontColor', 'fontBackgroundColor',
+                        '|', 'alignment:left', 'alignment:center', 'alignment:right', 'alignment:justify',
+                        '|', 'horizontalLine', 'pageBreak',
                         '|', 'code', 'codeBlock',
-                        '|', 'removeFormat', 'sourceEditing' // sourceEditing for HTML view
+                        '|', 'removeFormat', 'sourceEditing'
                     ],
                     shouldNotGroupWhenFull: true
+                },
+                heading: {
+                    options: [
+                        { model: 'paragraph', title: 'Paragraph', class: 'ck-heading_paragraph' },
+                        { model: 'heading1', view: 'h1', title: 'Heading 1', class: 'ck-heading_heading1' },
+                        { model: 'heading2', view: 'h2', title: 'Heading 2', class: 'ck-heading_heading2' },
+                        { model: 'heading3', view: 'h3', title: 'Heading 3', class: 'ck-heading_heading3' },
+                        { model: 'heading4', view: 'h4', title: 'Heading 4', class: 'ck-heading_heading4' },
+                        { model: 'heading5', view: 'h5', title: 'Heading 5', class: 'ck-heading_heading5' },
+                        { model: 'heading6', view: 'h6', title: 'Heading 6', class: 'ck-heading_heading6' }
+                    ]
+                },
+                fontSize: {
+                    options: [
+                        9, 10, 11, 12, 'default', 14, 16, 18, 20, 22, 24, 26, 28, 36, 48, 72
+                    ]
+                },
+                fontFamily: {
+                    options: [
+                        'default',
+                        'Arial, Helvetica, sans-serif',
+                        'Courier New, Courier, monospace',
+                        'Georgia, serif',
+                        'Lucida Sans Unicode, Lucida Grande, sans-serif',
+                        'Tahoma, Geneva, sans-serif',
+                        'Times New Roman, Times, serif',
+                        'Trebuchet MS, Helvetica, sans-serif',
+                        'Verdana, Geneva, sans-serif'
+                    ]
                 },
                 table: {
                     contentToolbar: [
@@ -126,8 +164,28 @@
                         'tableProperties', 'tableCellProperties'
                     ]
                 },
-                // Ensure the initial content from th:text is loaded
-                // CKEditor usually picks this up from the textarea
+                image: {
+                    toolbar: [
+                        'imageStyle:inline',
+                        'imageStyle:block',
+                        'imageStyle:side',
+                        '|',
+                        'toggleImageCaption',
+                        'imageTextAlternative'
+                    ]
+                },
+                link: {
+                    decorators: {
+                        openInNewTab: {
+                            mode: 'manual',
+                            label: 'Open in a new tab',
+                            attributes: {
+                                target: '_blank',
+                                rel: 'noopener noreferrer'
+                            }
+                        }
+                    }
+                }
             })
             .then(editor => {
                 ckeditorInstance = editor;
@@ -199,14 +257,143 @@
             form.target = "_blank"; // This will open/download the PDF
             form.submit();
         }
-        
-        // Salva Template HTML
+          // Salva Template HTML
         function saveHtmlTemplate() {
             updateTextareaBeforeSubmit();
             var form = document.getElementById('htmlForm');
             form.action = "/templates/save"; // Changed to new save endpoint
             form.target = "_self";
             form.submit();
+        }
+
+        // Improve Content with AI
+        function improveContentWithAI() {
+            if (!ckeditorInstance) {
+                alert('Editor not initialized');
+                return;
+            }            const content = ckeditorInstance.getData();
+            if (!content || content.trim() === '') {
+                alert('Please add some content before improving with AI.');
+                return;
+            }
+
+            // Get selected model
+            const modelSelect = document.getElementById('improveModelSelection');
+            const selectedModel = modelSelect.value;
+            
+            if (!selectedModel) {
+                alert('Please select an AI model first.');
+                return;
+            }
+
+            const improveBtn = document.getElementById('improveBtn');
+            const originalText = improveBtn.innerHTML;
+            
+            // Show loading state
+            improveBtn.disabled = true;
+            improveBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Improving...';
+
+            // Create form data
+            const formData = new FormData();
+            formData.append('content', content);
+            formData.append('model', selectedModel);
+
+            // Send request to backend
+            fetch('/improve-content', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                if (!response.ok) {
+                    return response.text().then(text => {
+                        throw new Error(text || 'Server error');
+                    });
+                }
+                return response.text();
+            })
+            .then(improvedContent => {
+                // Update editor content with improved version
+                ckeditorInstance.setData(improvedContent);
+                
+                // Show success message
+                showNotification('Content improved successfully!', 'success');
+            })
+            .catch(error => {
+                console.error('Error improving content:', error);
+                
+                // Check if it's a connection error to Ollama
+                if (error.message.includes('connect') || error.message.includes('Ollama')) {
+                    showOllamaErrorModal();
+                } else {
+                    showNotification('Error improving content: ' + error.message, 'error');
+                }
+            })
+            .finally(() => {
+                // Reset button state
+                improveBtn.disabled = false;
+                improveBtn.innerHTML = originalText;
+            });
+        }
+
+        // Show notification function
+        function showNotification(message, type) {
+            const alertClass = type === 'success' ? 'alert-success' : 'alert-danger';
+            const alertHtml = `
+                <div class="alert ${alertClass} alert-dismissible fade show" role="alert">
+                    ${message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            `;
+            
+            // Insert notification at the top of the container
+            const container = document.querySelector('.container.my-5');
+            container.insertAdjacentHTML('afterbegin', alertHtml);
+            
+            // Auto-dismiss after 5 seconds
+            setTimeout(() => {
+                const alert = container.querySelector('.alert');
+                if (alert) {
+                    const bsAlert = new bootstrap.Alert(alert);
+                    bsAlert.close();
+                }
+            }, 5000);
+        }
+
+        // Show Ollama error modal
+        function showOllamaErrorModal() {
+            const modalHtml = `
+                <div class="modal fade" id="ollamaErrorModal" tabindex="-1" aria-labelledby="ollamaErrorModalLabel" aria-hidden="true">
+                    <div class="modal-dialog modal-dialog-centered">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title" id="ollamaErrorModalLabel">Ollama Connection Issue</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                <p>Could not connect to the Ollama server to improve the content.</p>
+                                <p>Please ensure that your Ollama server is running and accessible at the configured address (usually <code>http://localhost:11434</code>).</p>
+                                <p>The content improvement feature requires an active Ollama connection.</p>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Remove existing modal if present
+            const existingModal = document.getElementById('ollamaErrorModal');
+            if (existingModal) {
+                existingModal.remove();
+            }
+            
+            // Add modal to body
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+            
+            // Show modal
+            const modal = new bootstrap.Modal(document.getElementById('ollamaErrorModal'));
+            modal.show();
         }
     </script>
 </body>
