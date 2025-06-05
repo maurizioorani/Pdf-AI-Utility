@@ -9,14 +9,8 @@
                 <ul class="navbar-nav ms-auto">
                     <li class="nav-item">
                         <a class="nav-link" th:classappend="${activePage == 'home' ? 'active' : ''}" aria-current="page" th:href="@{/}">Home</a>
-                    </li>
-                    <li class="nav-item">
+                    </li>                    <li class="nav-item">
                         <a class="nav-link" th:classappend="${activePage == 'templates' ? 'active' : ''}" th:href="@{/templates}">Generate PDF</a>
-                    </li>                     <li class="nav-item">
-                        <a class="nav-link" th:classappend="${activePage == 'upload-convert' ? 'active' : ''}" th:href="@{/upload-convert}">Convert File</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" th:classappend="${activePage == 'images-to-pdf' ? 'active' : ''}" th:href="@{/images-to-pdf}">Images to PDF</a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" th:classappend="${activePage == 'ocr' ? 'active' : ''}" th:href="@{/ocr}">OCR</a>
