@@ -35,8 +35,7 @@
                         <p>Create or edit HTML content using a rich text editor and convert it to PDF. Manage your HTML templates.</p>
                     </div>
                 </a>
-            </div>
-            <div class="col-md-4">
+            </div>            <div class="col-md-4">
                 <a th:href="@{/upload-convert}" class="text-decoration-none">
                     <div class="card h-100 p-4 text-center">
                         <div class="feature-icon">
@@ -44,6 +43,17 @@
                         </div>
                         <h3>Convert HTML/MD to PDF</h3>
                         <p>Upload HTML or Markdown files, save them, and convert them to PDF documents.</p>
+                    </div>
+                </a>
+            </div>
+            <div class="col-md-4">
+                <a th:href="@{/images-to-pdf}" class="text-decoration-none">
+                    <div class="card h-100 p-4 text-center">
+                        <div class="feature-icon">
+                            <i class="bi bi-images"></i>📸<i class="bi bi-arrow-right"></i><i class="bi bi-file-earmark-pdf"></i>
+                        </div>
+                        <h3>Generate PDF from Images</h3>
+                        <p>Upload multiple images (PNG, JPG, JPEG, TIFF) and combine them into a single PDF document.</p>
                     </div>
                 </a>
             </div>
@@ -107,8 +117,7 @@
 
     <!-- Quick Tools Section -->
     <section class="container my-5">
-        <h2 class="mb-4">Quick Tools</h2>
-        <div class="row g-3">
+        <h2 class="mb-4">Quick Tools</h2>        <div class="row g-3">
             <div class="col-6 col-md-3">
                 <a href="/merge" class="btn btn-outline-primary w-100 py-3">Merge PDFs</a>
             </div>
@@ -123,6 +132,9 @@
             </div>
             <div class="col-6 col-md-3">
                 <a href="/watermark" class="btn btn-outline-primary w-100 py-3">Watermark PDF</a>
+            </div>
+            <div class="col-6 col-md-3">
+                <a th:href="@{/images-to-pdf}" class="btn btn-outline-success w-100 py-3">Images to PDF</a>
             </div>
         </div>
     </section>

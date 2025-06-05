@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title th:text="${title}">Generate PDF from Images</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <!-- Custom CSS -->
+    <link rel="stylesheet" th:href="@{/css/style.css}" />
+    <style>
+        .upload-area {
+            border: 2px dashed #007bff;
+            border-radius: 10px;
+            padding: 40px;
+            text-align: center;
+            background-color: #f8f9fa;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .upload-area:hover {
+            border-color: #0056b3;
+            background-color: #e3f2fd;
+        }
+        .upload-area.drag-over {
+            border-color: #28a745;
+            background-color: #d4edda;
+        }
+        .image-preview {
+            max-width: 100px;
+            max-height: 100px;
+            object-fit: cover;
+            border-radius: 8px;
+            margin: 5px;
+        }
+        .image-container {
+            position: relative;
+            display: inline-block;
+            margin: 10px;
+        }
+        .remove-image {
+            position: absolute;
+            top: -10px;
+            right: -10px;
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 25px;
+            height: 25px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        .file-info {
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <div th:replace="~{fragments/navbar :: page-navbar (activePage='images-to-pdf')}"></div>
+
+    <div class="container my-5">
+        <div class="row justify-content-center">
+            <div class="col-lg-10">
+                <div class="card shadow">
+                    <div class="card-header bg-primary text-white">
+                        <h3 class="mb-0">
+                            <i class="bi bi-images"></i> Generate PDF from Images
+                        </h3>
+                    </div>
+                    <div class="card-body">
+                        <form id="imageUploadForm" action="/images-to-pdf/convert" method="post" enctype="multipart/form-data">
+                            <!-- Upload Area -->
+                            <div class="upload-area" id="uploadArea">
+                                <i class="bi bi-cloud-upload" style="font-size: 3rem; color: #007bff;"></i>
+                                <h4>Drop images here or click to select</h4>
+                                <p class="text-muted">Supported formats: JPG, PNG, TIFF, BMP, GIF</p>
+                                <p class="text-muted">Maximum file size: 10MB per image</p>
+                                <input type="file" id="imageInput" name="images" multiple accept="image/*" style="display: none;">
+                            </div>
+
+                            <!-- Selected Images Preview -->
+                            <div id="imagePreview" class="mt-4"></div>
+
+                            <!-- File Information -->
+                            <div id="fileInfo" class="file-info" style="display: none;">
+                                <h5>Selected Files:</h5>
+                                <ul id="fileList" class="list-unstyled"></ul>
+                            </div>
+
+                            <!-- PDF Settings -->
+                            <div class="row mt-4">
+                                <div class="col-md-4">
+                                    <label for="pageSize" class="form-label">Page Size:</label>
+                                    <select id="pageSize" name="pageSize" class="form-select">
+                                        <option value="A4" selected>A4</option>
+                                        <option value="A3">A3</option>
+                                        <option value="A5">A5</option>
+                                        <option value="LETTER">Letter</option>
+                                        <option value="LEGAL">Legal</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="orientation" class="form-label">Orientation:</label>
+                                    <select id="orientation" name="orientation" class="form-select">
+                                        <option value="portrait" selected>Portrait</option>
+                                        <option value="landscape">Landscape</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="fitToPage" class="form-label">Image Scaling:</label>
+                                    <select id="fitToPage" name="fitToPage" class="form-select">
+                                        <option value="true" selected>Fit to page</option>
+                                        <option value="false">Original size</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- Action Buttons -->
+                            <div class="d-flex justify-content-between mt-4">
+                                <a href="/" class="btn btn-outline-secondary">
+                                    <i class="bi bi-arrow-left"></i> Back to Home
+                                </a>
+                                <div>
+                                    <button type="button" id="clearImages" class="btn btn-outline-warning me-2" style="display: none;">
+                                        <i class="bi bi-trash"></i> Clear All
+                                    </button>
+                                    <button type="submit" id="generatePdf" class="btn btn-success" disabled>
+                                        <i class="bi bi-file-earmark-pdf"></i> Generate PDF
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Modal -->
+    <div class="modal fade" id="loadingModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-body text-center p-4">
+                    <div class="spinner-border text-primary mb-3" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <h5>Generating PDF...</h5>
+                    <p class="text-muted">Please wait while we process your images.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <div th:replace="~{fragments/footer :: page-footer}"></div>
+
+    <!-- Bootstrap JS Bundle with Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        let selectedFiles = [];
+
+        const uploadArea = document.getElementById('uploadArea');
+        const imageInput = document.getElementById('imageInput');
+        const imagePreview = document.getElementById('imagePreview');
+        const fileInfo = document.getElementById('fileInfo');
+        const fileList = document.getElementById('fileList');
+        const generatePdf = document.getElementById('generatePdf');
+        const clearImages = document.getElementById('clearImages');
+        const imageUploadForm = document.getElementById('imageUploadForm');
+        const loadingModal = new bootstrap.Modal(document.getElementById('loadingModal'));
+
+        // Click to upload
+        uploadArea.addEventListener('click', () => {
+            imageInput.click();
+        });
+
+        // Drag and drop functionality
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('drag-over');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('drag-over');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('drag-over');
+            const files = Array.from(e.dataTransfer.files);
+            handleFiles(files);
+        });
+
+        // File input change
+        imageInput.addEventListener('change', (e) => {
+            const files = Array.from(e.target.files);
+            handleFiles(files);
+        });
+
+        function handleFiles(files) {
+            // Filter image files
+            const imageFiles = files.filter(file => file.type.startsWith('image/'));
+            
+            // Check file size (10MB limit)
+            const validFiles = imageFiles.filter(file => {
+                if (file.size > 10 * 1024 * 1024) {
+                    alert(`File ${file.name} is too large. Maximum size is 10MB.`);
+                    return false;
+                }
+                return true;
+            });
+
+            // Add to selected files
+            selectedFiles.push(...validFiles);
+            updatePreview();
+            updateFileInfo();
+            updateButtons();
+        }
+
+        function updatePreview() {
+            imagePreview.innerHTML = '';
+            
+            selectedFiles.forEach((file, index) => {
+                const container = document.createElement('div');
+                container.className = 'image-container';
+                
+                const img = document.createElement('img');
+                img.className = 'image-preview';
+                img.src = URL.createObjectURL(file);
+                img.alt = file.name;
+                
+                const removeBtn = document.createElement('button');
+                removeBtn.className = 'remove-image';
+                removeBtn.innerHTML = '×';
+                removeBtn.onclick = () => removeImage(index);
+                
+                container.appendChild(img);
+                container.appendChild(removeBtn);
+                imagePreview.appendChild(container);
+            });
+        }
+
+        function updateFileInfo() {
+            if (selectedFiles.length > 0) {
+                fileInfo.style.display = 'block';
+                fileList.innerHTML = '';
+                
+                selectedFiles.forEach(file => {
+                    const li = document.createElement('li');
+                    li.innerHTML = `<i class="bi bi-image"></i> ${file.name} (${formatFileSize(file.size)})`;
+                    fileList.appendChild(li);
+                });
+            } else {
+                fileInfo.style.display = 'none';
+            }
+        }
+
+        function updateButtons() {
+            const hasFiles = selectedFiles.length > 0;
+            generatePdf.disabled = !hasFiles;
+            clearImages.style.display = hasFiles ? 'inline-block' : 'none';
+        }
+
+        function removeImage(index) {
+            selectedFiles.splice(index, 1);
+            updatePreview();
+            updateFileInfo();
+            updateButtons();
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        // Clear all images
+        clearImages.addEventListener('click', () => {
+            selectedFiles = [];
+            imageInput.value = '';
+            updatePreview();
+            updateFileInfo();
+            updateButtons();
+        });
+
+        // Form submission
+        imageUploadForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            
+            if (selectedFiles.length === 0) {
+                alert('Please select at least one image.');
+                return;
+            }
+
+            // Show loading modal
+            loadingModal.show();
+
+            // Create FormData and add selected files
+            const formData = new FormData();
+            selectedFiles.forEach(file => {
+                formData.append('images', file);
+            });
+            
+            // Add other form data
+            formData.append('pageSize', document.getElementById('pageSize').value);
+            formData.append('orientation', document.getElementById('orientation').value);
+            formData.append('fitToPage', document.getElementById('fitToPage').value);
+
+            // Submit form
+            fetch('/images-to-pdf/convert', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Failed to generate PDF');
+                }
+                return response.blob();
+            })
+            .then(blob => {
+                // Create download link
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.style.display = 'none';
+                a.href = url;
+                a.download = 'images-to-pdf.pdf';
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+                
+                loadingModal.hide();
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error generating PDF. Please try again.');
+                loadingModal.hide();
+            });
+        });
+    </script>
+</body>
+</html>

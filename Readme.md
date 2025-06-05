@@ -33,6 +33,7 @@ Discover the PDF PowerTool Suite, your all-in-one Spring Boot application for co
 This application empowers you to:
 -   **Generate PDFs from HTML**: Create PDFs from HTML, manage templates with a rich text editor.
 -   **Convert Files to PDF**: Upload HTML/Markdown, save as templates, convert to PDF.
+-   **Generate PDF from Images**: Upload multiple images (PNG, JPG, JPEG, TIFF, BMP, GIF) and combine them into a single PDF document with customizable page settings.
 -   **Simple PDF Generation**: Directly convert raw HTML to PDF.
 -   **OCR (Optical Character Recognition)**:
     -   Extract text from images (PNG, JPG, TIFF) and PDFs using Tesseract.
