@@ -31,7 +31,7 @@ Discover the PDF PowerTool Suite, your all-in-one Spring Boot application for co
 ## ✨ Core Capabilities
 
 This application empowers you to:
--   **Generate PDFs from HTML**: Create PDFs from HTML, manage templates with a rich text editor.
+-   **Generate PDFs from HTML**: Create PDFs from HTML, manage templates with a rich text editor, and enhance text content with AI.
 -   **Convert Files to PDF**: Upload HTML/Markdown, save as templates, convert to PDF.
 -   **Generate PDF from Images**: Upload multiple images (PNG, JPG, JPEG, TIFF, BMP, GIF) and combine them into a single PDF document with customizable page settings.
 -   **Simple PDF Generation**: Directly convert raw HTML to PDF.
@@ -109,7 +109,6 @@ This project uses `docker-compose.yml` for the full stack and `docker-compose.db
 
 - 🖋️ **PDF Form Filling**: Programmatic form field filling.
 - 📏 **Granular PDF Generation Options**: More control over page size, orientation, margins.
-- 🔍 **Dynamic Ollama Model Listing**: Fetch and display available LLMs from Ollama API.
 - 🔐 **Enhanced PDF Permissions**: Fine-grained control over document permissions.
 - ✨ **Improved Docker Image**: Optimize for size and startup.
 - 🚀 **Advanced RAG Features**: Expand LangChain4j with sophisticated document analysis.
@@ -120,6 +119,7 @@ This project uses `docker-compose.yml` for the full stack and `docker-compose.db
 - **🔧 Custom Similarity Engine**: Database-based cosine similarity.
 - 🧩 **Advanced PDF Splitting**: Options for splitting PDFs by custom page ranges. (✅ COMPLETED)
 - 💧 **PDF Watermarking**: Customizable text watermarks with position and opacity controls. (✅ COMPLETED)
+ - 🔍 **Dynamic Ollama Model Listing**: Fetch and display available LLMs from Ollama API. (✅ COMPLETED)
 - ✍️ **Text Enhancement**: Added functionality to improve and enhance arbitrary text using AI. (✅ COMPLETED)
 
 
