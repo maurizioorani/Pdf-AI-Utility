@@ -39,6 +39,7 @@ This application empowers you to:
     -   Extract text from images (PNG, JPG, TIFF) and PDFs using Tesseract.
     -   Async processing for large PDFs with progress tracking.
     -   **AI-Enhanced OCR Correction**: Improve OCR accuracy using local LLMs (via Ollama) with specialized prompts and text chunking.
+    -   **Text Improvement with AI**: Enhance given text using AI to improve readability, clarity, or style.
     -   Save and manage OCR results.
 -   **💬 Talk with your Documents (Q&A with RAG)**:
     -   Utilizes LangChain4j for Retrieval Augmented Generation (RAG).
@@ -119,6 +120,7 @@ This project uses `docker-compose.yml` for the full stack and `docker-compose.db
 - **🔧 Custom Similarity Engine**: Database-based cosine similarity.
 - 🧩 **Advanced PDF Splitting**: Options for splitting PDFs by custom page ranges. (✅ COMPLETED)
 - 💧 **PDF Watermarking**: Customizable text watermarks with position and opacity controls. (✅ COMPLETED)
+- ✍️ **Text Enhancement**: Added functionality to improve and enhance arbitrary text using AI. (✅ COMPLETED)
 
 
 ---
