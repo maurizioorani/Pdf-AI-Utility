@@ -2,38 +2,37 @@ package com.pdf.marsk.pdfdemo.service;
 
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
-import org.apache.pdfbox.pdmodel.PDPageContentStream;
-import org.apache.pdfbox.pdmodel.common.PDRectangle;
-import org.apache.pdfbox.pdmodel.graphics.image.LosslessFactory;
 import org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject;
+import org.apache.pdfbox.cos.COSName;
+import org.apache.pdfbox.pdmodel.PDResources;
+import org.apache.pdfbox.pdmodel.graphics.PDXObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import javax.imageio.ImageIO;
-import java.awt.Graphics2D; // Added for resizing
+import javax.imageio.ImageWriter;
+import javax.imageio.ImageWriteParam;
+import javax.imageio.stream.ImageOutputStream;
+import java.awt.Graphics2D;
+import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Iterator;
-import org.apache.pdfbox.cos.COSName; // Added from example for consistency
-import org.apache.pdfbox.pdmodel.PDResources; // Added from example
-import org.apache.pdfbox.pdmodel.graphics.PDXObject; // Added from example
-import org.apache.pdfbox.pdmodel.graphics.form.PDFormXObject; // Added from example, though we won't use its specific compression
 
 @Service
 public class PdfCompressionService {
  
     private static final Logger logger = LoggerFactory.getLogger(PdfCompressionService.class);
  
-    // Constants for maximum image dimensions from the example
-    private static final int MAX_WIDTH = 1000;
-    private static final int MAX_HEIGHT = 1000;
-    // Your JPEG quality can be kept or adjusted if needed. The example didn't specify ImageWriteParam for quality.
-    // private static final float JPEG_COMPRESSION_QUALITY = 0.75f; // Example: 75% quality. Let's rely on default ImageIO JPEG quality for now.
- 
+    // Enhanced compression constants
+    private static final int MAX_WIDTH = 800;  // Reduced from 1000 for better compression
+    private static final int MAX_HEIGHT = 800;
+    private static final float JPEG_COMPRESSION_QUALITY = 0.7f; // 70% quality for better compression
+    
     public byte[] compressPdf(MultipartFile pdfFile, boolean attemptImageCompression) throws IOException {
         if (pdfFile == null || pdfFile.isEmpty()) {
             throw new IllegalArgumentException("A PDF file is required for compression.");
@@ -52,27 +51,52 @@ public class PdfCompressionService {
                 throw new IOException("Encrypted PDFs cannot be compressed with this method.");
             }
             
-            // Attempt to enable object stream compression if not already used.
-            // This can reduce size for some documents.
-            // Note: PDFBox 2.x enables this by default when saving if possible.
-            // For more control, one might need to delve into COSWriter settings.
-
-            // A simple re-save can sometimes optimize and compress.
-            // For more aggressive compression, especially of images, more complex logic is needed.
-            // This basic approach mainly relies on PDFBox's default save optimizations.
-
+            logger.info("Starting comprehensive compression for PDF: {}", pdfFile.getOriginalFilename());
+            
+            // Apply various compression techniques
             if (attemptImageCompression) {
-                logger.info("Attempting image compression for PDF: {}", pdfFile.getOriginalFilename());
+                logger.info("Applying aggressive image compression");
                 compressImagesInDocument(document);
             }
             
+            // Remove metadata and structure information to reduce size
+            optimizeDocumentStructure(document);
+            
+            // Save with compression options
             document.save(compressedPdfOutputStream);
-            logger.info("PDF processed for potential compression: {}. Image compression attempted: {}", pdfFile.getOriginalFilename(), attemptImageCompression);
-            return compressedPdfOutputStream.toByteArray();
+            
+            byte[] result = compressedPdfOutputStream.toByteArray();
+            logger.info("PDF compression completed for: {}. Image compression: {}. Final size: {} bytes", 
+                       pdfFile.getOriginalFilename(), attemptImageCompression, result.length);
+            return result;
 
         } catch (IOException e) {
             logger.error("Error during PDF processing for {}: {}", pdfFile.getOriginalFilename(), e.getMessage(), e);
             throw new IOException("Error processing PDF file: " + pdfFile.getOriginalFilename(), e);
+        }
+    }
+    
+    private void optimizeDocumentStructure(PDDocument document) {
+        try {
+            // Remove metadata to reduce file size
+            if (document.getDocumentInformation() != null) {
+                document.getDocumentInformation().setAuthor(null);
+                document.getDocumentInformation().setCreator(null);
+                document.getDocumentInformation().setProducer(null);
+                document.getDocumentInformation().setSubject(null);
+                document.getDocumentInformation().setTitle(null);
+                document.getDocumentInformation().setKeywords(null);
+                logger.debug("Removed document metadata for size optimization");
+            }
+            
+            // Remove structure tree if present (accessibility info that can be large)
+            if (document.getDocumentCatalog().getStructureTreeRoot() != null) {
+                document.getDocumentCatalog().setStructureTreeRoot(null);
+                logger.debug("Removed structure tree for size optimization");
+            }
+            
+        } catch (Exception e) {
+            logger.warn("Failed to optimize document structure: {}", e.getMessage());
         }
     }
     
@@ -86,79 +110,126 @@ public class PdfCompressionService {
 
                 if (xobject instanceof PDImageXObject) {
                     PDImageXObject imageXObject = (PDImageXObject) xobject;
-
-                    BufferedImage originalImage = imageXObject.getImage();
-                    if (originalImage == null) {
-                        logger.warn("Could not get BufferedImage for image {} on page.", cosName.getName());
-                        continue;
-                    }
-
-                    BufferedImage imageToProcess = originalImage;
-
-                    // Resize logic from example
-                    if (originalImage.getWidth() > MAX_WIDTH || originalImage.getHeight() > MAX_HEIGHT) {
-                        int newWidth = originalImage.getWidth();
-                        int newHeight = originalImage.getHeight();
-
-                        if (originalImage.getWidth() > originalImage.getHeight()) {
-                            newWidth = MAX_WIDTH;
-                            newHeight = (int) ((double) MAX_WIDTH * originalImage.getHeight() / originalImage.getWidth());
-                        } else {
-                            newHeight = MAX_HEIGHT;
-                            newWidth = (int) ((double) MAX_HEIGHT * originalImage.getWidth() / originalImage.getHeight());
-                        }
-                        
-                        // Ensure new dimensions are at least 1x1
-                        newWidth = Math.max(1, newWidth);
-                        newHeight = Math.max(1, newHeight);
-
-                        BufferedImage resized = new BufferedImage(newWidth, newHeight, BufferedImage.TYPE_INT_RGB);
-                        Graphics2D g = resized.createGraphics();
-                        g.drawImage(originalImage, 0, 0, newWidth, newHeight, null);
-                        g.dispose();
-                        imageToProcess = resized;
-                        logger.info("Resized image {} from {}x{} to {}x{}", cosName.getName(),
-                                    originalImage.getWidth(), originalImage.getHeight(), newWidth, newHeight);
-                    }
-
-                    // Convert to RGB for JPEG compression (if not already or if resized)
-                    BufferedImage rgbImage = new BufferedImage(imageToProcess.getWidth(), imageToProcess.getHeight(), BufferedImage.TYPE_INT_RGB);
-                    Graphics2D gRgb = rgbImage.createGraphics();
-                    gRgb.drawImage(imageToProcess, 0, 0, null); // Using null for ImageObserver
-                    gRgb.dispose();
-
-                    ByteArrayOutputStream compressedImageStream = new ByteArrayOutputStream();
-                    // Using default JPEG quality. For specific quality:
-                    // ImageWriter writer = ImageIO.getImageWritersByFormatName("jpeg").next();
-                    // ImageWriteParam param = writer.getDefaultWriteParam();
-                    // param.setCompressionMode(ImageWriteParam.MODE_EXPLICIT);
-                    // param.setCompressionQuality(JPEG_COMPRESSION_QUALITY); // Your 0.75f
-                    // writer.setOutput(ImageIO.createImageOutputStream(compressedImageStream));
-                    // writer.write(null, new IIOImage(rgbImage, null, null), param);
-                    // writer.dispose();
-                    boolean written = ImageIO.write(rgbImage, "jpeg", compressedImageStream);
-                    
-                    if (!written) {
-                        logger.warn("Could not write image {} as JPEG.", cosName.getName());
-                        continue;
-                    }
-
-                    byte[] compressedImageData = compressedImageStream.toByteArray();
-                    
-                    // Only replace if the new image is smaller (or if it wasn't a JPEG before and now is)
-                    boolean wasNotJpeg = !("jpg".equalsIgnoreCase(imageXObject.getSuffix()) || "jpeg".equalsIgnoreCase(imageXObject.getSuffix()));
-                    if (wasNotJpeg || compressedImageData.length < imageXObject.getStream().getLength()) {
-                        PDImageXObject newImageXObject = PDImageXObject.createFromByteArray(document, compressedImageData, cosName.getName());
-                        resources.put(cosName, newImageXObject);
-                        logger.info("Processed and replaced image {} on page. Original size: {}, New size: {}. Was not JPEG: {}",
-                                    cosName.getName(), imageXObject.getStream().getLength(), compressedImageData.length, wasNotJpeg);
-                    } else {
-                        logger.info("Skipping replacement for image {} as compressed JPEG version is not smaller. Original: {}, Compressed: {}",
-                                    cosName.getName(), imageXObject.getStream().getLength(), compressedImageData.length);
-                    }
+                    processImage(document, resources, cosName, imageXObject);
                 }
-                // We are not processing PDFormXObject with custom text compression from the example.
             }
         }
+    }
+    
+    private void processImage(PDDocument document, PDResources resources, COSName cosName, PDImageXObject imageXObject) throws IOException {
+        try {
+            BufferedImage originalImage = imageXObject.getImage();
+            if (originalImage == null) {
+                logger.warn("Could not get BufferedImage for image {} on page.", cosName.getName());
+                return;
+            }
+
+            BufferedImage imageToProcess = originalImage;
+            boolean wasResized = false;
+
+            // More aggressive resizing - resize images that are larger than our limits
+            if (originalImage.getWidth() > MAX_WIDTH || originalImage.getHeight() > MAX_HEIGHT) {
+                imageToProcess = resizeImage(originalImage);
+                wasResized = true;
+                logger.info("Resized image {} from {}x{} to {}x{}", cosName.getName(),
+                           originalImage.getWidth(), originalImage.getHeight(), 
+                           imageToProcess.getWidth(), imageToProcess.getHeight());
+            }
+
+            // Always try to compress to JPEG with quality settings for better compression
+            byte[] compressedImageData = compressToJpeg(imageToProcess);
+            
+            if (compressedImageData == null) {
+                logger.warn("Could not compress image {} to JPEG.", cosName.getName());
+                return;
+            }
+
+            // More aggressive replacement - replace if compressed version is significantly smaller
+            // or if we resized the image
+            long originalSize = imageXObject.getStream().getLength();
+            boolean shouldReplace = wasResized || 
+                                  compressedImageData.length < originalSize || 
+                                  compressedImageData.length < (originalSize * 0.9); // Replace if at least 10% smaller
+
+            if (shouldReplace) {
+                PDImageXObject newImageXObject = PDImageXObject.createFromByteArray(document, compressedImageData, cosName.getName());
+                resources.put(cosName, newImageXObject);
+                logger.info("Replaced image {}. Original size: {}, New size: {}, Reduction: {:.1f}%",
+                           cosName.getName(), originalSize, compressedImageData.length,
+                           ((double)(originalSize - compressedImageData.length) / originalSize) * 100);
+            } else {
+                logger.debug("Skipping replacement for image {} - no significant improvement. Original: {}, Compressed: {}",
+                           cosName.getName(), originalSize, compressedImageData.length);
+            }
+            
+        } catch (Exception e) {
+            logger.warn("Failed to process image {}: {}", cosName.getName(), e.getMessage());
+        }
+    }
+    
+    private BufferedImage resizeImage(BufferedImage originalImage) {
+        int newWidth = originalImage.getWidth();
+        int newHeight = originalImage.getHeight();
+
+        // Calculate new dimensions maintaining aspect ratio
+        double aspectRatio = (double) originalImage.getWidth() / originalImage.getHeight();
+        
+        if (originalImage.getWidth() > originalImage.getHeight()) {
+            newWidth = MAX_WIDTH;
+            newHeight = (int) (MAX_WIDTH / aspectRatio);
+        } else {
+            newHeight = MAX_HEIGHT;
+            newWidth = (int) (MAX_HEIGHT * aspectRatio);
+        }
+        
+        // Ensure new dimensions are at least 1x1
+        newWidth = Math.max(1, newWidth);
+        newHeight = Math.max(1, newHeight);
+
+        BufferedImage resized = new BufferedImage(newWidth, newHeight, BufferedImage.TYPE_INT_RGB);
+        Graphics2D g = resized.createGraphics();
+        
+        // Use high quality rendering hints for better image quality
+        g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+        g.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
+        g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        
+        g.drawImage(originalImage, 0, 0, newWidth, newHeight, null);
+        g.dispose();
+        
+        return resized;
+    }
+    
+    private byte[] compressToJpeg(BufferedImage image) throws IOException {
+        // Convert to RGB for JPEG compression
+        BufferedImage rgbImage = new BufferedImage(image.getWidth(), image.getHeight(), BufferedImage.TYPE_INT_RGB);
+        Graphics2D gRgb = rgbImage.createGraphics();
+        gRgb.drawImage(image, 0, 0, null);
+        gRgb.dispose();
+
+        ByteArrayOutputStream compressedImageStream = new ByteArrayOutputStream();
+        
+        // Use specific JPEG compression quality for better file size reduction
+        Iterator<ImageWriter> writers = ImageIO.getImageWritersByFormatName("jpeg");
+        if (!writers.hasNext()) {
+            throw new IOException("No JPEG writers available");
+        }
+        
+        ImageWriter writer = writers.next();
+        ImageWriteParam param = writer.getDefaultWriteParam();
+        
+        if (param.canWriteCompressed()) {
+            param.setCompressionMode(ImageWriteParam.MODE_EXPLICIT);
+            param.setCompressionQuality(JPEG_COMPRESSION_QUALITY);
+        }
+        
+        try (ImageOutputStream ios = ImageIO.createImageOutputStream(compressedImageStream)) {
+            writer.setOutput(ios);
+            writer.write(null, new javax.imageio.IIOImage(rgbImage, null, null), param);
+        } finally {
+            writer.dispose();
+        }
+        
+        return compressedImageStream.toByteArray();
     }
 }

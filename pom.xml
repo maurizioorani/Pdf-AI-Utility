@@ -9,9 +9,9 @@
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
 	<groupId>com.pdf.marsk</groupId>
-	<artifactId>pdfdemo</artifactId>
-	<version>0.0.1-SNAPSHOT</version>
-	<name>pdfdemo</name>
+	<artifactId>pdftool</artifactId>
+	<version>0.0.5-SNAPSHOT</version>
+	<name>pdftool</name>
 	<description>Demo project for Spring Boot</description>	<properties>
 		<java.version>17</java.version>
 		<spring-ai.version>0.8.1</spring-ai.version>
